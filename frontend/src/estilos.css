@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   El Cartel Pintado — esmalte sobre chapa.
+   Cuatro tintas y ninguna mas. El azul ocupa la pantalla; el escarlata existe
+   solo donde hay una accion posible; el ambar solo para precio y total; el
+   crema es el papel de los paneles. Un gris de interfaz de repuesto seria la
+   quinta tinta que este sistema no tiene.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  --color-azul: #12203f;
+  --color-azul-hondo: #0b1529;
+  --color-azul-claro: #24365e;
+  --color-escarlata: #e4322b;
+  --color-escarlata-hondo: #b3211c;
+  --color-ambar: #f0b429;
+  --color-crema: #f5f1e6;
+  --color-crema-sombra: #ded5bd;
+  --color-tinta: #17181a;
+
+  /* Archivo y Archivo Black son de Omnibus-Type, fundicion de Buenos Aires,
+     dibujadas para uso de senalizacion y destaque. La eleccion no es de gusto:
+     es la letra del mundo del que sale este sistema. */
+  --font-cuerpo: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-cartel: 'Archivo Black', 'Archivo', system-ui, sans-serif;
+
+  /* Radios de un conjunto de tres. Un cartel pintado tiene esquina viva; los
+     redondeos existen solo donde algo se toma con la mano. */
+  --radius-nada: 0px;
+  --radius-filo: 3px;
+  --radius-mango: 6px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-azul);
+    color: var(--color-crema);
+    font-family: var(--font-cuerpo);
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* El foco es visible siempre y en el mismo idioma que el resto: un trazo
+     ambar, el mismo grosor de un filete. La operacion es de teclado. */
+  :focus-visible {
+    outline: 3px solid var(--color-ambar);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-ambar);
+    color: var(--color-tinta);
+  }
+
+  /* Los numerales de precio se alinean en columna: cifras de ancho fijo. */
+  .numeral {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+}
+
+@layer components {
+  /* El filete: unico ornamento del sistema, y solo como remate de un
+     encabezado. Regla doble con terminal pintado en cada extremo. Nunca
+     decora algo que ya funciona por si mismo. */
+  .filete {
+    position: relative;
+    height: 7px;
+  }
+  .filete::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 3px;
+    background: var(--color-escarlata);
+  }
+  .filete::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--color-ambar);
+  }
+
+  .filete-terminal::before {
+    /* Los extremos se afinan, como el trazo de un pincel al levantarse. */
+    mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
+  }
+
+  /* Panel: la chapa pintada. Esquina viva, borde de tinta, sin sombra suave.
+     La profundidad viene del borde, no de un desenfoque. */
+  .panel {
+    background: var(--color-crema);
+    color: var(--color-tinta);
+    border: 2px solid var(--color-tinta);
+    border-radius: var(--radius-filo);
+    box-shadow: 4px 4px 0 rgb(11 21 41 / 0.55);
+  }
+
+  .panel-oscuro {
+    background: var(--color-azul-hondo);
+    color: var(--color-crema);
+    border: 2px solid #000;
+    border-radius: var(--radius-filo);
+  }
+}
+
+/* Reduccion de movimiento: el latido del cursor y las transiciones se apagan. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Impresion: el comprobante sale en A4. La pantalla desaparece por completo.
+   --------------------------------------------------------------------------- */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .no-imprimir {
+    display: none !important;
+  }
+
+  .hoja {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 16mm;
+}
