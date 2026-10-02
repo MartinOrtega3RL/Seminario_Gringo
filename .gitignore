@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------
+#  Dependencias
+# ---------------------------------------------------------------------
+node_modules/
+
+# ---------------------------------------------------------------------
+#  Secretos y configuracion de cada maquina
+#  El archivo .env lleva la contrasena de MySQL y el secreto del token:
+#  nunca se versiona. Lo que se versiona es .env.example, con los nombres
+#  de las variables y ningun valor real.
+# ---------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+
+# ---------------------------------------------------------------------
+#  Compilados y artefactos de construccion
+# ---------------------------------------------------------------------
+dist/
+build/
+
+# ---------------------------------------------------------------------
+#  Lo que el sistema escribe mientras corre
+#  La carpeta de imagenes la crea el backend al arrancar (imagen.js).
+# ---------------------------------------------------------------------
+backend/almacen/
+comprobantes/
+*.log
+logs/
+
+# ---------------------------------------------------------------------
+#  Herramientas de asistencia al desarrollo
+#  No forman parte del sistema entregado.
+# ---------------------------------------------------------------------
+.claude/
+.impeccable/
+skills-lock.json
+h18.py
+
+# ---------------------------------------------------------------------
+#  Sistema operativo y editores
+# ---------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
