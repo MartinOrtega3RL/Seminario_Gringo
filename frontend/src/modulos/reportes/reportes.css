@@ -1,0 +1,48 @@
+/* Estilos de impresion propios del modulo de reportes (A4). */
+
+.solo-imprimir {
+  display: none;
+}
+
+@media print {
+  .solo-imprimir {
+    display: block;
+  }
+
+  .reporte-imprimible {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .reporte-imprimible .tarjeta-reporte,
+  .reporte-imprimible .bloque-reporte {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  .reporte-imprimible .valor-destacado {
+    color: #000 !important;
+  }
+
+  .reporte-imprimible .texto-suave {
+    color: #444 !important;
+  }
+
+  .reporte-imprimible table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .reporte-imprimible tr {
+    break-inside: avoid;
+  }
+
+  .reporte-imprimible th,
+  .reporte-imprimible td {
+    border-color: #999 !important;
+    color: #000 !important;
+  }
+}
+
