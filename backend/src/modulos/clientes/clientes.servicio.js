@@ -1,8 +1,15 @@
 import { Op } from 'sequelize'
 import { sequelize } from '../../config/base-de-datos.js'
-import { Cliente, Persona, TipoCliente } from '../../modelos/index.js'
+import {
+  Cliente, Persona, TipoCliente,
+  Venta, DetalleVenta, PagoVenta, MedioPago, Producto,
+  OrdenServicio, Dispositivo, ModeloDispositivo, Marca, EstadoOrden,
+} from '../../modelos/index.js'
 import { NoEncontrado, DatosInvalidos } from '../../errores.js'
-import { normalizarContacto, documentoCompleto } from './clientes.reglas.js'
+import {
+  normalizarContacto, documentoCompleto,
+  formatearCompraHistorial, formatearReparacionHistorial,
+} from './clientes.reglas.js'
 
 const RELACIONES = [
   {
@@ -126,4 +133,81 @@ export const modificarCliente = async (idCliente, datos) => {
 export const darDeBajaCliente = async (idCliente) => {
   const cliente = await buscarCliente(idCliente)
   await cliente.update({ activo: false })
+}
+
+/** RF14.1 — historial paginado de compras del cliente. */
+export const listarComprasCliente = async (idCliente, { limit, offset }) => {
+  await buscarCliente(idCliente)
+
+  const resultado = await Venta.findAndCountAll({
+    where: { idCliente },
+    attributes: [
+      'idVenta', 'fechaHora', 'numeroComprobante',
+      'montoTotal', 'recargoFinanciacion', 'estado',
+      'modalidadPago', 'cantidadCuotas', 'listaPrecioAplicada',
+    ],
+    include: [
+      {
+        model: PagoVenta,
+        as: 'pago',
+        attributes: ['idPago', 'importe'],
+        include: [{ model: MedioPago, as: 'medioPago', attributes: ['nombre'] }],
+      },
+      {
+        model: DetalleVenta,
+        as: 'detalle',
+        separate: true,
+        attributes: ['idDetalle', 'cantidad'],
+        include: [{ model: Producto, as: 'producto', attributes: ['idProducto', 'denominacion'] }],
+      },
+    ],
+    order: [['fechaHora', 'DESC'], ['idVenta', 'DESC']],
+    limit,
+    offset,
+  })
+
+  return {
+    count: resultado.count,
+    rows: resultado.rows.map((venta) => formatearCompraHistorial(venta.get({ plain: true }))),
+  }
+}
+
+/** RF14.2 — historial paginado de reparaciones del cliente. */
+export const listarReparacionesCliente = async (idCliente, { limit, offset }) => {
+  await buscarCliente(idCliente)
+
+  const resultado = await OrdenServicio.findAndCountAll({
+    where: { idCliente },
+    attributes: [
+      'idOrden', 'numeroOrden', 'fechaIngreso', 'fallaDeclarada',
+      'montoPresupuestado', 'recargoAplicado', 'montoTotal',
+      'fechaVencGarantia', 'fechaEntrega', 'idOrdenAnterior',
+    ],
+    include: [
+      {
+        model: Dispositivo,
+        as: 'dispositivo',
+        attributes: ['idDispositivo', 'imeiSerie'],
+        include: [{
+          model: ModeloDispositivo,
+          as: 'modelo',
+          attributes: ['idModelo', 'denominacion'],
+          include: [{ model: Marca, as: 'marca', attributes: ['idMarca', 'nombre'] }],
+        }],
+      },
+      {
+        model: EstadoOrden,
+        as: 'estado',
+        attributes: ['idEstado', 'codigo', 'nombre', 'esFinal'],
+      },
+    ],
+    order: [['fechaIngreso', 'DESC'], ['idOrden', 'DESC']],
+    limit,
+    offset,
+  })
+
+  return {
+    count: resultado.count,
+    rows: resultado.rows.map((orden) => formatearReparacionHistorial(orden.get({ plain: true }))),
+  }
 }

@@ -3,6 +3,7 @@ import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
 import {
   listarClientes, buscarCliente, listarTiposCliente,
   registrarCliente, modificarCliente, darDeBajaCliente,
+  listarComprasCliente, listarReparacionesCliente,
 } from './clientes.servicio.js'
 
 const opcional = (esquema) => esquema.nullish().transform((valor) => valor || null)
@@ -59,4 +60,18 @@ export const modificar = async (peticion, respuesta) => {
 export const darDeBaja = async (peticion, respuesta) => {
   await darDeBajaCliente(esquemaId.parse(peticion.params.idCliente))
   return respuesta.status(204).send()
+}
+
+export const comprasDelCliente = async (peticion, respuesta) => {
+  const idCliente = esquemaId.parse(peticion.params.idCliente)
+  const paginacion = leerPaginacion(peticion.query)
+  const resultado = await listarComprasCliente(idCliente, paginacion)
+  return respuesta.json(responderPaginado(resultado, paginacion))
+}
+
+export const reparacionesDelCliente = async (peticion, respuesta) => {
+  const idCliente = esquemaId.parse(peticion.params.idCliente)
+  const paginacion = leerPaginacion(peticion.query)
+  const resultado = await listarReparacionesCliente(idCliente, paginacion)
+  return respuesta.json(responderPaginado(resultado, paginacion))
 }

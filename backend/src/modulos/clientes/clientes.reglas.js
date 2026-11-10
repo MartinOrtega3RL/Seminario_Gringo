@@ -1,5 +1,7 @@
 // Reglas del padron que se deciden sin consultar la base.
 
+import { aCentavos, aPesos } from '../ventas/ventas.reglas.js'
+
 /** El nombre para mostrar sale de persona; cliente solo agrega lo comercial. */
 export const nombreVisible = (cliente) =>
   cliente?.persona?.apellidoNombre?.trim() || 'Sin nombre'
@@ -30,3 +32,54 @@ export const documentoCompleto = ({ tipoDocumento, numeroDocumento }) => {
   if (!tipoDocumento && !numeroDocumento) return true
   return Boolean(tipoDocumento && numeroDocumento)
 }
+
+/** Resume las lineas de una venta para el renglon del historial (RF14.1). */
+export const resumirProductosVenta = (detalle = []) => {
+  if (!detalle?.length) return null
+  const unidades = detalle.reduce((suma, linea) => suma + Number(linea.cantidad ?? 0), 0)
+  const primero = detalle[0].producto?.denominacion ?? 'Producto dado de baja'
+  const resto = detalle.length - 1
+  return `${unidades} u. · ${primero}${resto > 0 ? ` y ${resto} más` : ''}`
+}
+
+/** RF14.1 — forma plana de una compra en el historial del cliente. */
+export const formatearCompraHistorial = (venta) => {
+  const totalCentavos = aCentavos(venta.montoTotal ?? 0) + aCentavos(venta.recargoFinanciacion ?? 0)
+  return {
+    idVenta: venta.idVenta,
+    fechaHora: venta.fechaHora,
+    numeroComprobante: venta.numeroComprobante,
+    total: Number(aPesos(totalCentavos)),
+    estado: venta.estado,
+    modalidadPago: venta.modalidadPago,
+    cantidadCuotas: venta.cantidadCuotas ?? null,
+    listaPrecioAplicada: venta.listaPrecioAplicada,
+    medioPago: venta.pago?.medioPago?.nombre ?? null,
+    resumenProductos: resumirProductosVenta(venta.detalle),
+  }
+}
+
+/** RF14.2 — forma plana de una reparacion en el historial del cliente. */
+export const formatearReparacionHistorial = (orden) => ({
+  idOrden: orden.idOrden,
+  numeroOrden: orden.numeroOrden,
+  fechaIngreso: orden.fechaIngreso,
+  fallaDeclarada: orden.fallaDeclarada,
+  equipo: {
+    marca: orden.dispositivo?.modelo?.marca?.nombre ?? null,
+    modelo: orden.dispositivo?.modelo?.denominacion ?? null,
+    imeiSerie: orden.dispositivo?.imeiSerie ?? null,
+  },
+  estado: orden.estado
+    ? {
+        codigo: orden.estado.codigo,
+        nombre: orden.estado.nombre,
+        esFinal: Boolean(orden.estado.esFinal),
+      }
+    : null,
+  total: Number(orden.montoTotal ?? 0),
+  montoPresupuestado: orden.montoPresupuestado != null ? Number(orden.montoPresupuestado) : null,
+  fechaVencGarantia: orden.fechaVencGarantia ?? null,
+  fechaEntrega: orden.fechaEntrega ?? null,
+  idOrdenAnterior: orden.idOrdenAnterior ?? null,
+})

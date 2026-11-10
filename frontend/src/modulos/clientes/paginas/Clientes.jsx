@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useListadoPaginado } from '../../../ganchos/useListadoPaginado.js'
 import {
   listarClientes, listarTiposCliente, registrarCliente, modificarCliente, darDeBajaCliente,
@@ -14,6 +15,7 @@ import { useSesion } from '../../../app/sesion.jsx'
 
 export const Clientes = () => {
   const { puedeEscribir } = useSesion()
+  const navegar = useNavigate()
   const escritura = puedeEscribir('CLIENTES_PROV')
 
   const listado = useListadoPaginado(listarClientes, { tamano: 20 })
@@ -122,7 +124,7 @@ export const Clientes = () => {
                     {cliente.tipoCliente.nombre}
                   </Marca>
                 }
-                alAbrir={escritura ? () => setEditando(cliente) : undefined}
+                alAbrir={() => navegar(`/clientes/${cliente.idCliente}`)}
                 acciones={
                   escritura && (
                     <>
