@@ -8,6 +8,9 @@ import { MovimientoStock } from './existencias.js'
 import { TipoCliente, Cliente, Proveedor, ProductoProveedor } from './clientes.js'
 import { MedioPago, Venta, DetalleVenta, PagoVenta } from './ventas.js'
 import { ParametroSistema } from './sistema.js'
+import {
+  Dispositivo, EstadoOrden, OrdenServicio, OrdenEstadoHistorial, FotoOrden, RepuestoUtilizado, TareaRealizada,
+} from './servicio.js'
 
 // --- Acceso ------------------------------------------------------------------
 Usuario.belongsTo(Persona, { foreignKey: 'idPersona', as: 'persona' })
@@ -46,8 +49,9 @@ MovimientoStock.belongsTo(Producto, { foreignKey: 'idProducto', as: 'producto' }
 MovimientoStock.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
 MovimientoStock.belongsTo(Venta, { foreignKey: 'idVenta', as: 'venta' })
 Producto.hasMany(MovimientoStock, { foreignKey: 'idProducto', as: 'movimientos' })
-// idRecepcion e idOrden apuntan a tablas de modulos diferidos: existen en la
-// base con su clave foranea, pero no se mapean todavia.
+// idRecepcion apunta a una tabla del modulo diferido de recepcion con OCR
+// (RF10): existe en la base con su clave foranea, pero no se mapea todavia.
+MovimientoStock.belongsTo(OrdenServicio, { foreignKey: 'idOrden', as: 'orden' })
 
 // --- Clientes ----------------------------------------------------------------
 Cliente.belongsTo(Persona, { foreignKey: 'idPersona', as: 'persona' })
@@ -83,6 +87,36 @@ PagoVenta.belongsTo(MedioPago, { foreignKey: 'idMedioPago', as: 'medioPago' })
 
 Venta.hasMany(MovimientoStock, { foreignKey: 'idVenta', as: 'movimientos' })
 
+// --- Servicio tecnico (RF21 a RF25) -------------------------------------------
+Dispositivo.belongsTo(ModeloDispositivo, { foreignKey: 'idModelo', as: 'modelo' })
+ModeloDispositivo.hasMany(Dispositivo, { foreignKey: 'idModelo', as: 'dispositivos' })
+Dispositivo.hasMany(OrdenServicio, { foreignKey: 'idDispositivo', as: 'ordenes' })
+
+OrdenServicio.belongsTo(Cliente, { foreignKey: 'idCliente', as: 'cliente' })
+OrdenServicio.belongsTo(Dispositivo, { foreignKey: 'idDispositivo', as: 'dispositivo' })
+OrdenServicio.belongsTo(EstadoOrden, { foreignKey: 'idEstadoActual', as: 'estado' })
+OrdenServicio.belongsTo(Usuario, { foreignKey: 'idUsuarioRecepcion', as: 'recibidoPor' })
+OrdenServicio.belongsTo(Usuario, { foreignKey: 'idUsuarioTecnico', as: 'tecnico' })
+// RF24.3 — relacion recursiva: un reingreso por garantia apunta a su orden de origen.
+OrdenServicio.belongsTo(OrdenServicio, { foreignKey: 'idOrdenAnterior', as: 'ordenAnterior' })
+Cliente.hasMany(OrdenServicio, { foreignKey: 'idCliente', as: 'ordenes' })
+
+OrdenServicio.hasMany(OrdenEstadoHistorial, { foreignKey: 'idOrden', as: 'historial' })
+OrdenEstadoHistorial.belongsTo(OrdenServicio, { foreignKey: 'idOrden', as: 'orden' })
+OrdenEstadoHistorial.belongsTo(EstadoOrden, { foreignKey: 'idEstado', as: 'estado' })
+OrdenEstadoHistorial.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
+
+OrdenServicio.hasMany(FotoOrden, { foreignKey: 'idOrden', as: 'fotos' })
+FotoOrden.belongsTo(OrdenServicio, { foreignKey: 'idOrden', as: 'orden' })
+
+OrdenServicio.hasMany(RepuestoUtilizado, { foreignKey: 'idOrden', as: 'repuestos' })
+RepuestoUtilizado.belongsTo(OrdenServicio, { foreignKey: 'idOrden', as: 'orden' })
+RepuestoUtilizado.belongsTo(Producto, { foreignKey: 'idProducto', as: 'producto' })
+
+OrdenServicio.hasMany(TareaRealizada, { foreignKey: 'idOrden', as: 'tareas' })
+TareaRealizada.belongsTo(OrdenServicio, { foreignKey: 'idOrden', as: 'orden' })
+TareaRealizada.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
+
 export {
   Persona, Perfil, Modulo, Permiso, Usuario, Sesion,
   Categoria, Marca, Producto, ModeloDispositivo, ProductoModeloCompatible,
@@ -90,4 +124,5 @@ export {
   TipoCliente, Cliente, Proveedor, ProductoProveedor,
   MedioPago, Venta, DetalleVenta, PagoVenta,
   ParametroSistema,
+  Dispositivo, EstadoOrden, OrdenServicio, OrdenEstadoHistorial, FotoOrden, RepuestoUtilizado, TareaRealizada,
 }
