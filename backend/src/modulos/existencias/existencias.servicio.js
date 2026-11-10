@@ -101,6 +101,18 @@ export const restituirPorAnulacion = ({ idProducto, cantidad, idUsuario, idVenta
   aplicarMovimiento({ idProducto, delta: cantidad, tipo: 'DEVOLUCION', idUsuario, idVenta }, transaction)
 
 /**
+ * RF22.4 / RF11.3 — repuesto usado en una orden de servicio. Lo invoca el modulo
+ * de servicio tecnico dentro de la transaccion de la orden: el descuento y el
+ * renglon de repuesto_utilizado se escriben juntos o no se escribe ninguno.
+ */
+export const descontarPorReparacion = ({ idProducto, cantidad, idUsuario, idOrden, motivo }, transaction) =>
+  aplicarMovimiento({ idProducto, delta: -cantidad, tipo: 'REPARACION', idUsuario, motivo, idOrden }, transaction)
+
+/** Quitar un repuesto de una orden devuelve la unidad al stock y deja el movimiento. */
+export const restituirPorReparacion = ({ idProducto, cantidad, idUsuario, idOrden, motivo }, transaction) =>
+  aplicarMovimiento({ idProducto, delta: cantidad, tipo: 'DEVOLUCION', idUsuario, motivo, idOrden }, transaction)
+
+/**
  * RF11.1 — ingreso de mercaderia, varias lineas en una sola operacion.
  * La mercaderia llega en remitos de varios articulos y cargarlos de a uno
  * multiplicaria el trabajo (H25).
@@ -145,10 +157,11 @@ export const registrarAjuste = async ({ idProducto, cantidad, motivo }, idUsuari
  * Reemplaza la planilla en papel que el comercio usa hoy: "se descuentan y
  * anotan en una planilla cada vez que se utiliza uno" (H29).
  *
- * No exige una orden de servicio tecnico. El modulo 5 esta diferido, y el
- * esquema admite un movimiento de REPARACION con id_orden nulo, porque
+ * Este camino NO exige una orden de servicio tecnico: es para el repuesto que se
+ * usa sin que haya una orden abierta. El esquema lo admite porque
  * ck_movstock_origen_unico pide "como maximo uno", no "exactamente uno".
- * Cuando el modulo llegue, el mismo movimiento pasa a llevar su orden.
+ * Cuando hay orden, el repuesto se carga desde ella (descontarPorReparacion) y
+ * el movimiento queda atado a su orden.
  */
 export const registrarConsumoReparacion = async ({ idProducto, cantidad, motivo, idOrden = null }, idUsuario) => {
   if (!Number.isInteger(cantidad) || cantidad < 1) {

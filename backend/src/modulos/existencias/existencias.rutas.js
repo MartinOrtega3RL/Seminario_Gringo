@@ -38,7 +38,7 @@ const esquemaConsumo = z.object({
   idProducto: z.coerce.number().int().positive(),
   cantidad: z.coerce.number().int().min(1).max(9_999),
   motivo: z.string().trim().min(4, 'Indicá para qué reparación se usó.').max(200),
-  // Queda listo para cuando exista el modulo de servicio tecnico (RF21).
+  // Opcional: el repuesto de una orden se carga desde la propia orden (RF22.4).
   idOrden: z.coerce.number().int().positive().nullish(),
 })
 
