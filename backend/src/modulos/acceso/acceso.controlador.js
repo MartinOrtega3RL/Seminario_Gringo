@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { iniciarSesion, cerrarSesion, cambiarContrasenaPropia } from './acceso.servicio.js'
+import { iniciarSesion, cerrarSesion, cambiarContrasenaPropia, usuarioDeSesion } from './acceso.servicio.js'
 
 // El controlador traduce peticion en argumentos y resultado en respuesta.
 // No decide nada del negocio.
@@ -37,5 +37,7 @@ export const cambiarContrasena = async (peticion, respuesta) => {
 }
 
 // Con quien esta hablando el frontend. Sirve para rehidratar la sesion al
-// recargar la pagina sin volver a pedir la contrasena.
-export const sesionActual = async (peticion, respuesta) => respuesta.json({ usuario: peticion.usuario })
+// recargar la pagina sin volver a pedir la contrasena. Devuelve lo mismo que el
+// ingreso, permisos incluidos: sin ellos el menu queda vacio.
+export const sesionActual = async (peticion, respuesta) =>
+  respuesta.json({ usuario: await usuarioDeSesion(peticion.usuario.idUsuario) })

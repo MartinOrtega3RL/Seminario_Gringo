@@ -39,6 +39,20 @@ const permisosDelPerfil = async (idPerfil) => {
     }))
 }
 
+/**
+ * El usuario tal como lo necesita el frontend: quien es y que puede hacer. Lo usan
+ * el ingreso y la rehidratacion de la sesion al recargar la pagina; si cada uno
+ * lo armara por su lado, uno se olvidaria de los permisos y el otro no, que es
+ * exactamente lo que paso: despues de recargar, el menu quedaba vacio.
+ */
+const presentarUsuario = async (usuario) => ({
+  idUsuario: usuario.idUsuario,
+  nombreUsuario: usuario.nombreUsuario,
+  apellidoNombre: usuario.persona.apellidoNombre,
+  perfil: usuario.perfil.nombre,
+  permisos: await permisosDelPerfil(usuario.idPerfil),
+})
+
 /** RF01.1 — autentica y emite el token de sesion. */
 export const iniciarSesion = async ({ nombreUsuario, contrasena, direccionIp }) => {
   const usuario = await Usuario.scope('conCredenciales').findOne({
@@ -70,16 +84,23 @@ export const iniciarSesion = async ({ nombreUsuario, contrasena, direccionIp }) 
     direccionIp: direccionIp ?? null,
   })
 
-  return {
-    token,
-    usuario: {
-      idUsuario: usuario.idUsuario,
-      nombreUsuario: usuario.nombreUsuario,
-      apellidoNombre: usuario.persona.apellidoNombre,
-      perfil: usuario.perfil.nombre,
-      permisos: await permisosDelPerfil(usuario.idPerfil),
-    },
-  }
+  return { token, usuario: await presentarUsuario(usuario) }
+}
+
+/**
+ * Con quien esta hablando el frontend, con lo que puede hacer. Sirve para
+ * rehidratar la sesion al recargar la pagina sin volver a pedir la contrasena.
+ */
+export const usuarioDeSesion = async (idUsuario) => {
+  const usuario = await Usuario.findByPk(idUsuario, {
+    include: [
+      { model: Perfil, as: 'perfil' },
+      { model: Persona, as: 'persona', attributes: ['apellidoNombre'] },
+    ],
+  })
+  if (!usuario || !usuario.activo) throw new NoAutenticado()
+
+  return presentarUsuario(usuario)
 }
 
 /** RF01.2 — invalida el token vigente. */
