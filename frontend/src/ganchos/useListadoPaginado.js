@@ -74,6 +74,9 @@ export const useListadoPaginado = (consultar, { tamano = 25, filtros = {} } = {}
     setPagina,
     datos: resultado.datos,
     paginacion: resultado.paginacion,
+    // Lo que acompana a la pagina y no es parte de ella: los contadores por
+    // estado del servicio tecnico, el total del periodo. Nulo si el listado no lo trae.
+    resumen: resultado.resumen ?? null,
     cargando,
     error,
     recargar: buscar,

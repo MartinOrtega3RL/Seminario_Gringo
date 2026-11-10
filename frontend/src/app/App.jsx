@@ -14,6 +14,9 @@ import { Proveedores } from '../modulos/proveedores/paginas/Proveedores.jsx'
 import { PuntoDeVenta } from '../modulos/ventas/paginas/PuntoDeVenta.jsx'
 import { HistorialVentas } from '../modulos/ventas/paginas/HistorialVentas.jsx'
 import { Comprobante } from '../modulos/ventas/paginas/Comprobante.jsx'
+import { Ordenes } from '../modulos/servicio/paginas/Ordenes.jsx'
+import { NuevaOrden } from '../modulos/servicio/paginas/NuevaOrden.jsx'
+import { FichaOrden } from '../modulos/servicio/paginas/FichaOrden.jsx'
 import { Vacio } from '../ui/Estados.jsx'
 
 const Espera = () => (
@@ -55,6 +58,8 @@ const Inicio = () => {
   const { puedeLeer } = useSesion()
 
   if (puedeLeer('VENTAS')) return <Navigate to="/venta" replace />
+  // El tecnico no tiene ventas: su pantalla es el taller.
+  if (puedeLeer('SERVICIO_TECNICO')) return <Navigate to="/servicio" replace />
   if (puedeLeer('CATALOGO_STOCK')) return <Navigate to="/productos" replace />
   if (puedeLeer('CLIENTES_PROV')) return <Navigate to="/clientes" replace />
   return <Navigate to="/mi-cuenta" replace />
@@ -78,6 +83,12 @@ const Rutas = () => (
       <Route path="/venta" element={conPermiso('VENTAS', <PuntoDeVenta />)} />
       <Route path="/ventas" element={conPermiso('VENTAS', <HistorialVentas />)} />
       <Route path="/venta/:idVenta/comprobante" element={conPermiso('VENTAS', <Comprobante />)} />
+
+      {/* Servicio técnico: el listado, la recepción y la ficha de cada orden.
+          «nueva» va antes de «:idOrden», o se la tomaría por un identificador. */}
+      <Route path="/servicio" element={conPermiso('SERVICIO_TECNICO', <Ordenes />)} />
+      <Route path="/servicio/nueva" element={conPermiso('SERVICIO_TECNICO', <NuevaOrden />)} />
+      <Route path="/servicio/:idOrden" element={conPermiso('SERVICIO_TECNICO', <FichaOrden />)} />
 
       {/* Una sola sección con tres vistas: el módulo 2 de la carpeta es uno. */}
       <Route path="/productos" element={conPermiso('CATALOGO_STOCK', <SeccionProductos />)}>

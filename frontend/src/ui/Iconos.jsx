@@ -122,3 +122,22 @@ export const IconoBalanza = (props) => (
     <path d="M12 4v16M5 8h14M5 8 2 15h6zM19 8l-3 7h6zM8 20h8" />
   </Trazo>
 )
+
+// Llave de tuerca, para el servicio tecnico.
+export const IconoServicio = (props) => (
+  <Trazo {...props}>
+    <path d="M14.5 6.5a4 4 0 0 0 4.9 4.9L21 13l-3 3-2.4-2.4L8 21l-3-3 7.6-7.6L10.2 8l3-3z" />
+  </Trazo>
+)
+
+export const IconoFoto = (props) => (
+  <Trazo {...props}>
+    <path d="M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+  </Trazo>
+)
+
+export const IconoCampana = (props) => (
+  <Trazo {...props}>
+    <path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" />
+  </Trazo>
+)

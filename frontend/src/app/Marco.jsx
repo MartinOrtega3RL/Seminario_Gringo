@@ -2,18 +2,20 @@ import { Link, NavLink, Outlet } from 'react-router'
 import { useSesion } from './sesion.jsx'
 import { Boton } from '../ui/Boton.jsx'
 import {
-  IconoCatalogo, IconoVenta, IconoSalir, IconoHistorial, IconoClientes, IconoUsuarios,
+  IconoCatalogo, IconoVenta, IconoSalir, IconoHistorial, IconoClientes, IconoUsuarios, IconoServicio,
 } from '../ui/Iconos.jsx'
 
 // Barra superior, no barra lateral. La lateral con iconos y tarjetas blancas
 // es exactamente la disposición que el titular miró y descartó (H16).
 //
-// RNF06 pide navegación por menús e íconos: son cinco destinos y cada uno se
-// muestra solo si el perfil lo tiene habilitado (RF04.1).
+// RNF06 pide navegación por menús e íconos: son seis destinos y cada uno se
+// muestra solo si el perfil lo tiene habilitado (RF04.1): solo el administrador
+// ve la barra entera.
 
 const SECCIONES = [
   { a: '/venta', texto: 'Mostrador', modulo: 'VENTAS', Icono: IconoVenta, exacta: true },
   { a: '/ventas', texto: 'Ventas', modulo: 'VENTAS', Icono: IconoHistorial },
+  { a: '/servicio', texto: 'Servicio técnico', modulo: 'SERVICIO_TECNICO', Icono: IconoServicio },
   { a: '/productos', texto: 'Productos', modulo: 'CATALOGO_STOCK', Icono: IconoCatalogo },
   { a: '/clientes', texto: 'Clientes y proveedores', modulo: 'CLIENTES_PROV', Icono: IconoClientes },
   { a: '/usuarios', texto: 'Usuarios', modulo: 'ADMIN_SEGURIDAD', Icono: IconoUsuarios },

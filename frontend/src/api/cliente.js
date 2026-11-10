@@ -157,6 +157,30 @@ export const abrirDocumento = async (ruta) => {
   }
 }
 
+/**
+ * Trae un archivo protegido (la foto de una orden) como URL de objeto, para un
+ * <img>. Un <img src> no puede mandar la cabecera de autorizacion, y las fotos
+ * del servicio tecnico no son publicas: son el equipo de un cliente.
+ *
+ * Quien lo llama es dueno de la URL y debe soltarla con URL.revokeObjectURL al
+ * desmontarse; si no, la imagen queda retenida en memoria hasta recargar.
+ */
+export const cargarArchivo = async (ruta) => {
+  const token = leerToken()
+
+  let respuesta
+  try {
+    respuesta = await fetch(`${BASE}${ruta}`, { headers: token ? { authorization: `Bearer ${token}` } : {} })
+  } catch {
+    throw new ErrorDeApi({ mensaje: SIN_CONEXION, codigo: 'SIN_CONEXION', estado: 0 })
+  }
+
+  if (respuesta.status === 401) guardarToken(null)
+  if (!respuesta.ok) throw new ErrorDeApi({ mensaje: 'No se pudo cargar la imagen.', estado: respuesta.status })
+
+  return URL.createObjectURL(await respuesta.blob())
+}
+
 export const api = {
   obtener: (ruta) => pedir('GET', ruta),
   enviar: (ruta, cuerpo) => pedir('POST', ruta, cuerpo),

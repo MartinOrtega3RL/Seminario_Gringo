@@ -5,7 +5,10 @@ import { IconoBuscar } from '../../../ui/Iconos.jsx'
 // Buscador compacto para elegir un producto dentro de un diálogo. No hay lector
 // de códigos (S07): se tipea el nombre o el código interno, igual que en la venta.
 
-export const ElegirProducto = ({ etiqueta = 'Producto', alElegir, elegido, deshabilitado }) => {
+// `enfocar`: en un dialogo el cursor tiene que estar ya en el buscador; en una ficha
+// que se abre, tomar el foco mueve la pantalla y deja el borde marcado sin que
+// nadie lo haya tocado.
+export const ElegirProducto = ({ etiqueta = 'Producto', alElegir, elegido, deshabilitado, enfocar = true }) => {
   const [texto, setTexto] = useState('')
   const [resultados, setResultados] = useState([])
   const [buscando, setBuscando] = useState(false)
@@ -77,7 +80,7 @@ export const ElegirProducto = ({ etiqueta = 'Producto', alElegir, elegido, desha
         <input
           id="elegir-producto"
           type="search"
-          autoFocus
+          autoFocus={enfocar}
           value={texto}
           disabled={deshabilitado}
           onChange={(evento) => setTexto(evento.target.value)}
