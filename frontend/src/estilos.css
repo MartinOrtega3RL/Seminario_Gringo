@@ -47,6 +47,13 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* El reseteo de Tailwind 4 pone margin: 0 a todo, y un <dialog> modal se
+     centra por el `margin: auto` que trae el navegador: sin esta linea todos los
+     dialogos del sistema se abren pegados a la esquina superior izquierda. */
+  dialog {
+    margin: auto;
+  }
+
   /* El foco es visible siempre y en el mismo idioma que el resto: un trazo
      ambar, el mismo grosor de un filete. La operacion es de teclado. */
   :focus-visible {
