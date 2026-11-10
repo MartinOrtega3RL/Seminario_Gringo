@@ -302,7 +302,7 @@ CREATE TABLE marca (
 
 -- ---------------------------------------------------------------------
 -- modelo_dispositivo : sirve a RF06.8 (compatibilidad de repuestos) y a
--- RF20.3 (equipo que ingresa a servicio tecnico). La marca llega por
+-- RF21.3 (equipo que ingresa a servicio tecnico). La marca llega por
 -- transitividad desde el modelo.
 -- ---------------------------------------------------------------------
 CREATE TABLE modelo_dispositivo (
@@ -352,7 +352,7 @@ CREATE TABLE producto (
   KEY ix_producto_categoria_activo (id_categoria, activo),
   KEY ix_producto_marca_activo (id_marca, activo),
   KEY ix_producto_bajo_minimo (activo, bajo_minimo)
-    COMMENT 'RF12.3 / RF26.1 - productos que alcanzaron el nivel minimo',
+    COMMENT 'RF12.3 / RF27.1 - productos que alcanzaron el nivel minimo',
   FULLTEXT KEY ft_producto_busqueda (denominacion, descripcion)
     COMMENT 'RF06.5 / RNF02 / S01 - busqueda por texto bajo 2 s sobre 3.000 articulos',
   CONSTRAINT fk_producto_categoria FOREIGN KEY (id_categoria)
@@ -534,7 +534,7 @@ CREATE TABLE venta (
   PRIMARY KEY (id_venta),
   UNIQUE KEY uk_venta_comprobante (numero_comprobante),
   KEY ix_venta_fecha_estado (fecha_hora, estado)
-    COMMENT 'RF18.1 / RF25.1 - historial y reporte de ventas por periodo',
+    COMMENT 'RF18.1 / RF26.1 - historial y reporte de ventas por periodo',
   KEY ix_venta_cliente (id_cliente)
     COMMENT 'RF14.1 - historial de compras del cliente',
   KEY fk_venta_usuario (id_usuario),
@@ -579,7 +579,7 @@ CREATE TABLE detalle_venta (
   PRIMARY KEY (id_detalle),
   KEY ix_detventa_venta (id_venta),
   KEY ix_detventa_producto (id_producto)
-    COMMENT 'RF18.1 / RF25.1 - ventas por producto y por periodo',
+    COMMENT 'RF18.1 / RF26.1 - ventas por producto y por periodo',
   CONSTRAINT fk_detventa_venta FOREIGN KEY (id_venta)
     REFERENCES venta (id_venta) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_detventa_producto FOREIGN KEY (id_producto)
@@ -607,7 +607,7 @@ CREATE TABLE pago_venta (
   UNIQUE KEY uk_pagoventa_venta (id_venta)
     COMMENT 'RF16.6 - un unico medio de pago por operacion',
   KEY ix_pagoventa_medio (id_medio_pago)
-    COMMENT 'RF25.2 - desglose de las ventas del periodo por medio de pago',
+    COMMENT 'RF26.2 - desglose de las ventas del periodo por medio de pago',
   CONSTRAINT fk_pagoventa_venta FOREIGN KEY (id_venta)
     REFERENCES venta (id_venta) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_pagoventa_medio FOREIGN KEY (id_medio_pago)
@@ -617,7 +617,7 @@ CREATE TABLE pago_venta (
   COMMENT='RF16.6 - Pago aplicado a la venta';
 
 -- ---------------------------------------------------------------------
--- cuota : RF29
+-- cuota : RF20
 -- Solo las ventas con modalidad_pago = 'FINANCIACION_PROPIA' generan
 -- cuotas: con tarjeta y con Go Cuotas financia un tercero y el comercio
 -- percibe el total en el momento de la operacion.
@@ -628,19 +628,19 @@ CREATE TABLE cuota (
   id_cuota          INT              NOT NULL AUTO_INCREMENT,
   id_venta          INT              NOT NULL,
   numero_cuota      TINYINT UNSIGNED NOT NULL
-                      COMMENT 'RF29.1 - posicion dentro del plan, desde 1',
+                      COMMENT 'RF20.1 - posicion dentro del plan, desde 1',
   fecha_vencimiento DATE             NOT NULL
-                      COMMENT 'RF29.1 / RF29.3 - base para identificar las cuotas vencidas',
+                      COMMENT 'RF20.1 / RF20.3 - base para identificar las cuotas vencidas',
   importe           DECIMAL(12,2)    NOT NULL
-                      COMMENT 'RF29.1 - monto de la venta mas recargo, dividido por la cantidad de cuotas',
+                      COMMENT 'RF20.1 - monto de la venta mas recargo, dividido por la cantidad de cuotas',
   fecha_cobro       DATETIME         NULL
-                      COMMENT 'RF29.2 - nulo mientras la cuota esta pendiente',
-  id_medio_pago     INT              NULL  COMMENT 'RF29.2 - medio con el que se salda la cuota',
-  id_usuario_cobro  INT              NULL  COMMENT 'RF29.2 - responsable del cobro',
+                      COMMENT 'RF20.2 - nulo mientras la cuota esta pendiente',
+  id_medio_pago     INT              NULL  COMMENT 'RF20.2 - medio con el que se salda la cuota',
+  id_usuario_cobro  INT              NULL  COMMENT 'RF20.2 - responsable del cobro',
   PRIMARY KEY (id_cuota),
   UNIQUE KEY uk_cuota_venta_numero (id_venta, numero_cuota),
   KEY ix_cuota_pendientes (fecha_cobro, fecha_vencimiento)
-    COMMENT 'RF29.3 - cuotas pendientes y vencidas',
+    COMMENT 'RF20.3 - cuotas pendientes y vencidas',
   KEY ix_cuota_medio (id_medio_pago),
   KEY ix_cuota_usuario (id_usuario_cobro),
   CONSTRAINT fk_cuota_venta FOREIGN KEY (id_venta)
@@ -662,7 +662,7 @@ CREATE TABLE cuota (
     OR (fecha_cobro IS NOT NULL AND id_medio_pago IS NOT NULL AND id_usuario_cobro IS NOT NULL)
   )
 ) ENGINE=InnoDB
-  COMMENT='RF29 - Cuotas de las ventas financiadas por el propio comercio';
+  COMMENT='RF20 - Cuotas de las ventas financiadas por el propio comercio';
 
 -- ---------------------------------------------------------------------
 -- pedido_pendiente : RF19
@@ -705,20 +705,20 @@ CREATE TABLE pedido_pendiente (
 
 
 -- =====================================================================
---  MODULO 5 - SERVICIO TECNICO  (RF20 a RF24)
+--  MODULO 5 - SERVICIO TECNICO  (RF21 a RF25)
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- dispositivo : RF20.3
+-- dispositivo : RF21.3
 -- No se vincula al cliente: el titular del equipo puede cambiar y el
--- historial por IMEI que pide RF24.2 debe sobrevivir a ese cambio.
+-- historial por IMEI que pide RF25.2 debe sobrevivir a ese cambio.
 -- imei_serie admite NULL porque un equipo que no enciende puede ingresar
 -- sin IMEI legible, y exigirlo impediria registrar la recepcion.
 -- ---------------------------------------------------------------------
 CREATE TABLE dispositivo (
   id_dispositivo INT          NOT NULL AUTO_INCREMENT,
   id_modelo      INT          NOT NULL,
-  imei_serie     VARCHAR(30)  NULL  COMMENT 'RF20.3 / RF24.2 - nulo si no pudo leerse al ingresar',
+  imei_serie     VARCHAR(30)  NULL  COMMENT 'RF21.3 / RF25.2 - nulo si no pudo leerse al ingresar',
   color          VARCHAR(30)  NULL,
   observaciones  VARCHAR(200) NULL,
   PRIMARY KEY (id_dispositivo),
@@ -727,10 +727,10 @@ CREATE TABLE dispositivo (
   CONSTRAINT fk_dispositivo_modelo FOREIGN KEY (id_modelo)
     REFERENCES modelo_dispositivo (id_modelo) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB
-  COMMENT='RF20.3 - Dispositivos que ingresan a servicio tecnico';
+  COMMENT='RF21.3 - Dispositivos que ingresan a servicio tecnico';
 
 -- ---------------------------------------------------------------------
--- estado_orden : RF21.6 - ciclo de vida de la orden
+-- estado_orden : RF22.6 - ciclo de vida de la orden
 -- ---------------------------------------------------------------------
 CREATE TABLE estado_orden (
   id_estado        INT         NOT NULL AUTO_INCREMENT,
@@ -742,10 +742,10 @@ CREATE TABLE estado_orden (
   UNIQUE KEY uk_estado_codigo (codigo),
   UNIQUE KEY uk_estado_nombre (nombre)
 ) ENGINE=InnoDB
-  COMMENT='RF21.6 - Estados del ciclo de vida de la orden de servicio';
+  COMMENT='RF22.6 - Estados del ciclo de vida de la orden de servicio';
 
 -- ---------------------------------------------------------------------
--- orden_servicio : RF20
+-- orden_servicio : RF21
 -- Concentra las reglas de negocio que el comercio ya tiene formalizadas
 -- en su ficha de papel: garantia de 30 dias corridos (H07), retiro dentro
 -- de los 10 dias de notificado bajo recargo del 15% (H08) y exhibicion de
@@ -754,45 +754,45 @@ CREATE TABLE estado_orden (
 CREATE TABLE orden_servicio (
   id_orden                    INT           NOT NULL AUTO_INCREMENT,
   numero_orden                VARCHAR(20)   NOT NULL
-    COMMENT 'RF20.1 / RF20.9 / H09 - identificador unico que el cliente exhibe para retirar',
-  id_cliente                  INT           NOT NULL  COMMENT 'RF20.2 - mismo padron que ventas',
+    COMMENT 'RF21.1 / RF21.9 / H09 - identificador unico que el cliente exhibe para retirar',
+  id_cliente                  INT           NOT NULL  COMMENT 'RF21.2 - mismo padron que ventas',
   id_dispositivo              INT           NOT NULL,
   id_usuario_recepcion        INT           NOT NULL  COMMENT 'Quien recibio el equipo',
   id_usuario_tecnico          INT           NULL
-    COMMENT 'RF21 / RF27 - tecnico asignado; nulo hasta que se toma la orden',
+    COMMENT 'RF22 / RF28 - tecnico asignado; nulo hasta que se toma la orden',
   id_estado_actual            INT           NOT NULL
     COMMENT 'Denormalizacion controlada: el estado vigente tambien consta en el historial',
   id_orden_anterior           INT           NULL
-    COMMENT 'RF23.3 - reingreso por garantia (relacion recursiva)',
+    COMMENT 'RF24.3 - reingreso por garantia (relacion recursiva)',
   fecha_ingreso               DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  falla_declarada             TEXT          NOT NULL  COMMENT 'RF20.5 - lo que manifiesta el cliente',
+  falla_declarada             TEXT          NOT NULL  COMMENT 'RF21.5 - lo que manifiesta el cliente',
   estado_ingreso              TEXT          NOT NULL
-    COMMENT 'RF20.6 / H06 - estado fisico y funcional al recibir; respalda al comercio ante fallas no declaradas',
-  accesorios_recibidos        VARCHAR(300)  NULL  COMMENT 'RF20.4',
+    COMMENT 'RF21.6 / H06 - estado fisico y funcional al recibir; respalda al comercio ante fallas no declaradas',
+  accesorios_recibidos        VARCHAR(300)  NULL  COMMENT 'RF21.4',
   estado_sellos               ENUM('INTACTOS','VIOLADOS','SIN_SELLO') NOT NULL DEFAULT 'SIN_SELLO'
-    COMMENT 'RF20.8 / H07 - la ficha anula la garantia cuando los precintos propios estan rasgados o cortados: lo que dispara la exclusion es el estado del sello, no el hecho de haberlo verificado',
-  diagnostico_tecnico         TEXT          NULL  COMMENT 'RF21.1',
-  monto_presupuestado         DECIMAL(12,2) NULL  COMMENT 'RF21.2',
-  presupuesto_aprobado        TINYINT(1)    NULL  COMMENT 'RF21.3 - nulo mientras no hay respuesta del cliente',
-  fecha_respuesta_presupuesto DATETIME      NULL  COMMENT 'RF21.3',
+    COMMENT 'RF21.8 / H07 - la ficha anula la garantia cuando los precintos propios estan rasgados o cortados: lo que dispara la exclusion es el estado del sello, no el hecho de haberlo verificado',
+  diagnostico_tecnico         TEXT          NULL  COMMENT 'RF22.1',
+  monto_presupuestado         DECIMAL(12,2) NULL  COMMENT 'RF22.2',
+  presupuesto_aprobado        TINYINT(1)    NULL  COMMENT 'RF22.3 - nulo mientras no hay respuesta del cliente',
+  fecha_respuesta_presupuesto DATETIME      NULL  COMMENT 'RF22.3',
   fecha_notificacion          DATETIME      NULL
-    COMMENT 'RF22.1 / RF22.2 / H08 - ultima notificacion; inicia el plazo de 10 dias',
-  fecha_entrega               DATETIME      NULL  COMMENT 'RF22.4',
-  conformidad_cliente         TINYINT(1)    NULL  COMMENT 'RF22.4 - conformidad registrada en la entrega',
+    COMMENT 'RF23.1 / RF23.2 / H08 - ultima notificacion; inicia el plazo de 10 dias',
+  fecha_entrega               DATETIME      NULL  COMMENT 'RF23.4',
+  conformidad_cliente         TINYINT(1)    NULL  COMMENT 'RF23.4 - conformidad registrada en la entrega',
   recargo_aplicado            DECIMAL(12,2) NOT NULL DEFAULT 0.00
-    COMMENT 'RF22.3 / H08 - 15% por demora en el retiro',
+    COMMENT 'RF23.3 / H08 - 15% por demora en el retiro',
   monto_total                 DECIMAL(12,2) NOT NULL DEFAULT 0.00
     COMMENT 'Derivado: presupuesto + repuestos + recargo',
   fecha_venc_garantia         DATE          NULL
-    COMMENT 'RF23.1 / H07 - 30 dias corridos desde la entrega',
+    COMMENT 'RF24.1 / H07 - 30 dias corridos desde la entrega',
   PRIMARY KEY (id_orden),
   UNIQUE KEY uk_orden_numero (numero_orden),
   KEY ix_orden_estado_fecha (id_estado_actual, fecha_ingreso)
-    COMMENT 'RF24.1 / RF27 - filtro por estado y periodo',
+    COMMENT 'RF25.1 / RF28 - filtro por estado y periodo',
   KEY ix_orden_notificacion (fecha_notificacion, fecha_entrega)
-    COMMENT 'RF22.2 - ordenes que superaron los 10 dias sin ser retiradas',
+    COMMENT 'RF23.2 - ordenes que superaron los 10 dias sin ser retiradas',
   KEY ix_orden_garantia (fecha_venc_garantia)
-    COMMENT 'RF23.2 - vigencia de garantia al reingresar un equipo',
+    COMMENT 'RF24.2 - vigencia de garantia al reingresar un equipo',
   KEY fk_orden_cliente (id_cliente),
   KEY fk_orden_dispositivo (id_dispositivo),
   KEY fk_orden_usuario_recepcion (id_usuario_recepcion),
@@ -815,10 +815,10 @@ CREATE TABLE orden_servicio (
     AND recargo_aplicado >= 0 AND monto_total >= 0
   )
 ) ENGINE=InnoDB
-  COMMENT='RF20 - Ordenes de servicio tecnico';
+  COMMENT='RF21 - Ordenes de servicio tecnico';
 
 -- ---------------------------------------------------------------------
--- orden_estado_historial : RF21.6 / RF22.1
+-- orden_estado_historial : RF22.6 / RF23.1
 -- Trazabilidad completa de las transiciones y de quien las hizo. De la
 -- transicion a NOTIFICADO surge la fecha que dispara el plazo de H08.
 -- ---------------------------------------------------------------------
@@ -829,7 +829,7 @@ CREATE TABLE orden_estado_historial (
   id_usuario          INT          NOT NULL,
   fecha_hora          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   medio_notificacion  ENUM('WHATSAPP','LLAMADA','PRESENCIAL','CORREO') NULL
-    COMMENT 'RF22.1 / H11 - solo en la transicion a NOTIFICADO',
+    COMMENT 'RF23.1 / H11 - solo en la transicion a NOTIFICADO',
   observacion         VARCHAR(300) NULL,
   PRIMARY KEY (id_historial),
   KEY ix_histestado_orden_fecha (id_orden, fecha_hora),
@@ -842,10 +842,10 @@ CREATE TABLE orden_estado_historial (
   CONSTRAINT fk_histestado_usuario FOREIGN KEY (id_usuario)
     REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB
-  COMMENT='RF21.6 / RF22.1 - Historial de estados de la orden';
+  COMMENT='RF22.6 / RF23.1 - Historial de estados de la orden';
 
 -- ---------------------------------------------------------------------
--- foto_orden : RF20.7 / H06
+-- foto_orden : RF21.7 / H06
 -- ---------------------------------------------------------------------
 CREATE TABLE foto_orden (
   id_foto          INT          NOT NULL AUTO_INCREMENT,
@@ -859,10 +859,10 @@ CREATE TABLE foto_orden (
   CONSTRAINT fk_foto_orden FOREIGN KEY (id_orden)
     REFERENCES orden_servicio (id_orden) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB
-  COMMENT='RF20.7 - Fotografias del dispositivo tomadas al recibirlo';
+  COMMENT='RF21.7 - Fotografias del dispositivo tomadas al recibirlo';
 
 -- ---------------------------------------------------------------------
--- repuesto_utilizado : RF21.4 / RF11.3
+-- repuesto_utilizado : RF22.4 / RF11.3
 -- El consumo del servicio tecnico afecta las existencias del catalogo:
 -- es la razon por la cual el modulo 2 es compartido.
 -- ---------------------------------------------------------------------
@@ -884,17 +884,17 @@ CREATE TABLE repuesto_utilizado (
   CONSTRAINT ck_repuesto_cantidad CHECK (cantidad > 0),
   CONSTRAINT ck_repuesto_precio CHECK (precio_unitario >= 0 AND costo_unitario >= 0)
 ) ENGINE=InnoDB
-  COMMENT='RF21.4 - Repuestos consumidos en la reparacion';
+  COMMENT='RF22.4 - Repuestos consumidos en la reparacion';
 
 -- ---------------------------------------------------------------------
--- tarea_realizada : RF21.5
+-- tarea_realizada : RF22.5
 -- Delimita el alcance de la garantia: solo lo efectivamente reparado
 -- queda cubierto (H07).
 -- ---------------------------------------------------------------------
 CREATE TABLE tarea_realizada (
   id_tarea    INT      NOT NULL AUTO_INCREMENT,
   id_orden    INT      NOT NULL,
-  id_usuario  INT      NOT NULL  COMMENT 'RF27 - tecnico que ejecuto la tarea',
+  id_usuario  INT      NOT NULL  COMMENT 'RF28 - tecnico que ejecuto la tarea',
   descripcion TEXT     NOT NULL,
   fecha_hora  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id_tarea),
@@ -905,7 +905,7 @@ CREATE TABLE tarea_realizada (
   CONSTRAINT fk_tarea_usuario FOREIGN KEY (id_usuario)
     REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB
-  COMMENT='RF21.5 - Tareas efectivamente realizadas sobre el dispositivo';
+  COMMENT='RF22.5 - Tareas efectivamente realizadas sobre el dispositivo';
 
 
 -- =====================================================================
@@ -972,7 +972,7 @@ CREATE TABLE movimiento_stock (
 
 
 -- =====================================================================
---  MODULO 6 - REPORTES  (RF25 a RF27)
+--  MODULO 6 - REPORTES  (RF26 a RF28)
 --  No requiere tablas propias: consulta las existentes. Las vistas que
 --  resuelven los reportes especificados estan en gestion_comercial_datos.sql
 -- =====================================================================

@@ -1,8 +1,10 @@
 # Iteración 1 — Sistema de gestión «El Gringo Celulares»
 
-Lo que hay que desarrollar en esta iteración, contrastado contra la especificación.
+Lo que se desarrolló en la primera iteración, contrastado contra la especificación. Entregada el **2 de octubre de 2026**.
 
-> **Fuente de verdad:** `Seminario\Seminario_Britez_Otega_Rivero.docx`. Las tablas de este documento son copia literal de las suyas: se extrajeron del archivo, no se transcribieron. Si la carpeta cambia, hay que regenerar este documento.
+> **Fuente de verdad:** la carpeta vigente, `Downloads\Seminario_ Ortega Minardi Martin Eduardo.docx`. Las tablas de este documento son copia literal de las suyas: se extrajeron del archivo, no se transcribieron. Si la carpeta cambia, hay que regenerar este documento.
+>
+> Esta versión reemplaza a la del 2 de octubre, que se había generado desde la carpeta del 24/09. Cambió en tres cosas: **RF15 (proveedores) entró en esta iteración**, la carpeta pasó de 27 a 30 hallazgos (H28 a H30 afectan esta iteración) y la numeración de requerimientos se corrigió (financiación propia es RF20, servicio técnico RF21 a RF25 y reportes RF26 a RF28).
 
 
 ## Stack
@@ -93,7 +95,9 @@ La búsqueda de **RF06.5** usa el índice `FULLTEXT` que el DDL ya define, no `L
 
 ### Las copias de seguridad no son código de la aplicación
 
-**RNF13** pide copias automáticas diarias, prioridad Alta. Se resuelve con una tarea programada de Windows que ejecuta `mysqldump`, configurada en el equipo del comercio. Se verifica restaurando una copia, que es el criterio que fija la propia especificación.
+**RNF13** pide copias automáticas diarias, prioridad Alta. El diagrama de despliegue de la carpeta la resuelve con una tarea `cron` en el servidor VPS que ejecuta `mysqldump`. Se verifica restaurando una copia, que es el criterio que fija la propia especificación.
+
+> **Sin hacer.** La copia todavía no está programada, y `docs/ARCHITECTURE.md` describe otra alternativa (una tarea programada de Windows en el equipo del comercio). Hay que alinear el documento con la carpeta y programar la copia antes de la entrega final.
 
 
 ### El usuario responsable sale del token, no del cuerpo de la petición
@@ -105,14 +109,45 @@ En los movimientos de stock, las ventas y las anulaciones, el identificador del 
 
 |  | Iteración 1 | Especificación completa |
 |---|---|---|
-| Requerimientos funcionales | 13 | 28 |
-| Operaciones | 54 | 100 |
+| Requerimientos funcionales | 14 | 28 |
+| Operaciones | 56 | 99 |
 | Requerimientos no funcionales | 16 | 18 |
-| Hallazgos involucrados | 18 | 27 |
+| Hallazgos involucrados | 22 | 30 |
 | Supuestos aplicables | 8 | 11 |
-| Tablas del modelo | 17 | 34 |
+| Tablas del modelo | 21 | 34 |
 
 El criterio de selección está en la carpeta: es la prioridad que manifestó el titular en el hallazgo **H03**, «el control de stock, el sistema de ventas en general es lo que más me preocupa en este momento».
+
+
+## Estado al cierre
+
+Las **56 operaciones** de los 14 requerimientos están implementadas, en el servidor y en la interfaz. Al entregar había **39 pruebas automáticas**.
+
+| Lo que estaba pendiente antes de escribir código | Cómo quedó |
+|---|---|
+| Verificar la instalación de la base con `verificar_instalacion.sql` | Hecho. El sistema corre sobre el esquema del DDL |
+| Crear `backend/.env` con `DB_NAME=gestion_comercial` | Hecho. El `.env` no se sube al repositorio |
+| Resolver la dependencia entre **RF06.7** (asociar proveedor) y **RF15** (proveedores), que estaba diferido | Se resolvió subiendo **RF15** a esta iteración. Por eso son 14 requerimientos y no 13 |
+| Programar la copia de seguridad diaria de **RNF13** | **Pendiente.** Ver «Las copias de seguridad» arriba |
+
+### Lo que cambió respecto del plan
+
+- **RF15 entró**, con sus dos operaciones. La central mayorista se carga como un proveedor más, sin distinción de tipo (**H22**).
+- **Permisos según H28.** El titular aclaró que el área de ventas registra las compras de insumos y repuestos, así que el perfil **Vendedor** escribe en catálogo y existencias. El **Técnico** consulta el catálogo y escribe en clientes y proveedores. La matriz está en `gestion_comercial_datos.sql` y la valida el servidor en cada operación (**RNF18**).
+- **Consumo de repuestos (RF11.3) según H29 y H30.** El repuesto es un artículo del catálogo, se vende por mostrador y además se consume en el taller. El consumo se registra con su motivo en reemplazo de la planilla en papel. Desde la iteración 2, el repuesto que se carga en una orden de servicio descuenta el stock en la misma transacción.
+- **Cuatro tablas más que las 17 previstas:** `proveedor` y `producto_proveedor` (por RF15 y RF06.7), y `modelo_dispositivo` y `producto_modelo_compatible` (por RF06.8).
+
+### Defectos encontrados después de la entrega
+
+| Defecto | Estado |
+|---|---|
+| Al recargar la página (F5) el menú quedaba vacío: la sesión recuperada no traía los permisos | Corregido el 23/10 |
+| Los diálogos se abrían pegados a la esquina superior izquierda, por el reseteo de estilos de Tailwind | Corregido el 23/10 |
+| En el historial de ventas, los filtros por día comparan la fecha local con la hora universal (UTC). Una venta hecha después de las 21:00 aparece en el día siguiente | **Pendiente** |
+
+### Lo que falta verificar
+
+Los criterios de verificación de los no funcionales piden **mediciones**: el tiempo de venta (RNF01), la búsqueda sobre 3.000 artículos (RNF02), el uso simultáneo (RNF05) y la prueba en PC, celular e impresora (RNF15), entre otros. Ninguna está registrada en el repositorio. Se hacen en la iteración 3, junto con la prueba final del sistema.
 
 
 ## Requerimientos funcionales
@@ -142,7 +177,7 @@ Los identificadores de primer nivel son requerimientos agrupadores: una funciona
 
 | ID | Nombre | Descripción | Prioridad | Dificultad | Origen |
 |---|---|---|---|---|---|
-| RF06 | Gestión de productos | Gestionar los productos del catálogo | Alta | — | H01, H03 |
+| RF06 | Gestión de productos | Gestionar los productos del catálogo | Alta | — | H01, H03, H30 |
 | RF06.1 | Registrar producto | Registrar un nuevo producto en el catálogo | Alta | Baja | H01 |
 | RF06.2 | Modificar producto | Modificar los datos de un producto existente | Alta | Baja | H01 |
 | RF06.3 | Dar de baja producto | Dar de baja lógica un producto, conservando su historial de operaciones | Media | Baja | H01 |
@@ -163,9 +198,9 @@ Los identificadores de primer nivel son requerimientos agrupadores: una funciona
 | RF09.1 | Generar código interno | Generar y asignar automáticamente un código de barras interno al registrar un producto | Alta | Baja | H02 |
 | RF09.2 | Generar etiqueta | Generar una etiqueta imprimible con el código de barras, la denominación y el precio del producto | Alta | Alta | H02 |
 | RF11 | Movimientos de existencias | Registrar los movimientos que afectan las existencias | Alta | — | H03 |
-| RF11.1 | Registrar ingreso de mercadería | Registrar el ingreso de mercadería, incrementando las existencias del producto | Alta | Media | H03 |
+| RF11.1 | Registrar ingreso de mercadería | Registrar el ingreso de mercadería, incrementando las existencias del producto | Alta | Media | H03, H28 |
 | RF11.2 | Descontar por venta | Descontar automáticamente las existencias al confirmarse una venta | Alta | Media | H03 |
-| RF11.3 | Descontar por reparación | Descontar las existencias de los repuestos utilizados en una orden de servicio técnico | Alta | Media | H03, H05 |
+| RF11.3 | Descontar por reparación | Descontar las existencias de los repuestos utilizados en una reparación, registrando el consumo con su motivo y su responsable | Alta | Media | H03, H05, H29, H30 |
 | RF11.4 | Restituir por anulación | Restituir las existencias ante la anulación de una venta | Media | Media | H03 |
 | RF11.5 | Registrar ajuste manual | Registrar ajustes manuales de inventario, consignando motivo y usuario responsable | Media | Media | H03 |
 | RF12 | Control de niveles de existencias | Controlar los niveles de existencias del catálogo | Alta | — | H03 |
@@ -185,6 +220,9 @@ Los identificadores de primer nivel son requerimientos agrupadores: una funciona
 | RF13.4 | Buscar cliente | Buscar y consultar clientes por denominación, documento o número de contacto | Alta | Baja | H11 |
 | RF13.5 | Clasificar cliente | Clasificar al cliente como minorista o mayorista | Alta | Baja | H04 |
 | RF13.6 | Registrar contacto | Registrar los datos de contacto del cliente, incluyendo su número de WhatsApp | Alta | Baja | H11 |
+| RF15 | Gestión de proveedores | Gestionar los proveedores del comercio | Media | — | H14, H22 |
+| RF15.1 | Administrar proveedores | Registrar, modificar y dar de baja proveedores | Media | Baja | H14 |
+| RF15.2 | Consultar productos del proveedor | Consultar los productos asociados a un proveedor determinado | Baja | Media | H14 |
 
 ### 4 · Ventas
 
@@ -209,7 +247,7 @@ Los identificadores de primer nivel son requerimientos agrupadores: una funciona
 
 ## Requerimientos no funcionales
 
-Se excluyen RNF03 y RNF04, que miden el módulo de reportes y el de servicio técnico, ambos diferidos.
+Se excluyen RNF03 y RNF04, que miden el módulo de reportes y el de servicio técnico.
 
 | ID | Nombre | Categoría | Descripción | Prioridad | Criterio de verificación | Origen |
 |---|---|---|---|---|---|---|
@@ -251,9 +289,13 @@ Evidencia del relevamiento de la que nacen los requerimientos de arriba.
 | H18 | Volumen operativo consignado por el titular en consulta de seguimiento: 15 a 20 ventas diarias y 3 a 5 órdenes de servicio por día | Base para el dimensionamiento del sistema |
 | H19 | "También estamos trabajando con lo que es envíos a domicilio", coordinados por WhatsApp e Instagram | Registro de la modalidad de entrega |
 | H21 | "Los tres, PC, celular, impresora" (dispositivos utilizados actualmente en el comercio) | Compatibilidad multiplataforma con el equipamiento informático existente |
+| H22 | "Nosotros mismos somos mayoristas, entonces en lo que es la central, por ejemplo, nosotros accedemos a sería nuestro proveedor prácticamente, la central" | Registro de la central mayorista como un proveedor más del comercio, sin distinción de tipo |
 | H23 | "Si no tenemos algún stock de un film de vidrio, alguna funda, nos facilita bastante lo que es la IA porque nos encuentra algo similar o algo que se pueda adaptar al celular" | Identificación de productos compatibles o sustitutos ante falta de existencias |
 | H24 | "Somos especialistas también en lo que es marca Apple, y por supuesto que Android también" | Catálogo y compatibilidad orientados a las dos plataformas de dispositivos |
 | H27 | Consulta de seguimiento al titular: el comercio opera con pago al contado y ofrece tres modalidades de pago en plazos: financiación propia, financiación con tarjeta y financiación a través de Go Cuotas. Observación directa: el local cuenta con terminal Mercado Pago Point Smart, que habilita el cobro con tarjeta | Registro de la modalidad de pago y administración de las cuotas cuando el comercio es quien financia |
+| H28 | Consulta de seguimiento al titular: "En cuanto a registro de compras, el área de ventas mismo se encarga de registrar las compras de insumos y repuestos" | Habilitación del perfil de ventas para registrar el ingreso de insumos y repuestos |
+| H29 | Consulta de seguimiento al titular: "Respecto al consumo de repuestos, se descuentan y anotan en una planilla cada vez que se utiliza uno" | Registro del consumo de repuestos en el sistema, en reemplazo de la planilla en papel |
+| H30 | Consulta de seguimiento al titular: "Los repuestos e insumos de hardware se venden directamente al público en el sector de ventas y también se utilizan en el servicio técnico. Al menos en nuestro local está más enfocado en utilizar los insumos y repuestos en el servicio técnico mismo" | Tratamiento del repuesto como artículo del catálogo, que se vende por mostrador y además se consume en el taller |
 
 ## Supuestos aplicables
 
@@ -270,22 +312,26 @@ Lo que no se relevó y se declaró como decisión, en lugar de convertirse en re
 | S09 | Actualización masiva de precios (RF08.4) | Se incorpora la actualización de precios por aplicación de un porcentaje sobre una categoría o marca | Decisión de ingeniería del equipo; no fue solicitada por el cliente, y se adopta por la frecuencia de reajuste que impone el contexto de precios |
 | S11 | Integración con la terminal de cobro (RF16.6) | No se especifica integración automática con la terminal Mercado Pago Point Smart; el medio de pago y su importe se registran manualmente en el sistema | Decisión de alcance del equipo: la terminal opera de forma autónoma y su integración excede el alcance de esta etapa |
 
-## Modelo de datos — las 17 tablas de esta iteración
+## Modelo de datos — las 21 tablas de esta iteración
 
-De las 34 que crea el esquema, estas son las que toca la primera iteración. El resto existe en la base pero no se mapea todavía.
+De las 34 que crea el esquema, estas son las que usa la primera iteración.
 
 | Tabla | Rol | Claves foráneas |
 |---|---|---|
 | `persona` | Supertipo de usuario y cliente: identidad, documento, WhatsApp, correo, domicilio | — |
 | `perfil` | Administrador, Vendedor y Técnico. Precargados | — |
 | `modulo` | Los seis módulos del sistema. Precargados | — |
-| `permiso` | Asociativa perfil × módulo, con lectura y escritura. Es la matriz de RF03 | `id_perfil` → `perfil`, `id_modulo` → `modulo` |
+| `permiso` | Asociativa perfil × módulo, con lectura y escritura. Precargada; editarla es RF03 | `id_perfil` → `perfil`, `id_modulo` → `modulo` |
 | `usuario` | Credenciales y perfil asignado | `id_persona` → `persona`, `id_perfil` → `perfil` |
 | `sesion` | Tokens emitidos. Sin persistirlos no se puede invalidar una sesión (RF01.2) | `id_usuario` → `usuario` |
 | `parametro_sistema` | Prefijo del código interno, minutos de inactividad, plazos y recargos | — |
 | `categoria` | Clasificación del catálogo | — |
 | `marca` | Clasificación del catálogo | — |
+| `modelo_dispositivo` | Modelos de teléfono, para la compatibilidad (RF06.8) | `id_marca` → `marca` |
 | `producto` | Código interno, tres precios, existencias, mínimo, columna generada y versión | `id_categoria` → `categoria`, `id_marca` → `marca` |
+| `producto_modelo_compatible` | Asociativa producto × modelo compatible (RF06.8) | `id_producto` → `producto`, `id_modelo` → `modelo_dispositivo` |
+| `proveedor` | Padrón de proveedores, especializado de persona, incluida la central mayorista (H22) | `id_persona` → `persona` |
+| `producto_proveedor` | Asociativa producto × proveedor (RF06.7, RF15.2) | `id_producto` → `producto`, `id_proveedor` → `proveedor` |
 | `movimiento_stock` | Toda variación de existencias con su origen, que es excluyente | `id_producto` → `producto`, `id_usuario` → `usuario`, `id_recepcion` → `recepcion_mercaderia`, `id_venta` → `venta`, `id_orden` → `orden_servicio` |
 | `tipo_cliente` | Minorista y Mayorista, con la lista de precios aplicable | — |
 | `cliente` | Padrón, especializado de persona | `id_persona` → `persona`, `id_tipo_cliente` → `tipo_cliente` |
@@ -294,31 +340,22 @@ De las 34 que crea el esquema, estas son las que toca la primera iteración. El 
 | `detalle_venta` | Líneas con precio y costo congelados al momento de la operación | `id_venta` → `venta`, `id_producto` → `producto` |
 | `pago_venta` | Medio de pago aplicado. Uno por operación | `id_venta` → `venta`, `id_medio_pago` → `medio_pago` |
 
-## Lo que no entra en esta iteración
+## Lo que no entró en esta iteración
 
-| Diferido | Motivo |
-|---|---|
-| Módulo 5 — Servicio técnico (RF20 a RF24) | Es el bloque más extenso de la especificación |
-| Módulo 6 — Reportes (RF25 a RF27) | Su utilidad requiere un volumen previo de operaciones registradas |
-| RF10 — Recepción de mercadería con OCR | Concentra el mayor riesgo técnico del proyecto |
-| RF03 — Perfiles y permisos configurables | Se suple con los tres perfiles relevados en H13, precargados |
-| RF29 — Gestión de financiación propia | Depende del circuito de venta ya consolidado |
-| RF19 — Pedidos pendientes | Diferido junto con el resto del módulo de ventas ampliado |
-| RF14 y RF15 — Historial del cliente y proveedores | No condicionan el circuito de venta |
+| Diferido | Motivo | Dónde quedó |
+|---|---|---|
+| Módulo 5 — Servicio técnico (RF21 a RF25) | Es el bloque más extenso de la especificación | Iteración 2 ([`ITERACION_2.md`](ITERACION_2.md)) |
+| Módulo 6 — Reportes (RF26 a RF28) | Su utilidad requiere un volumen previo de operaciones registradas | Iteración 3 |
+| RF10 — Recepción de mercadería con OCR | Concentra el mayor riesgo técnico del proyecto. El ingreso manual (RF11.1) cubre la operación mientras tanto | Iteración 3 |
+| RF03 — Perfiles y permisos configurables | Se suple con los tres perfiles relevados en H13, precargados | Iteración 3 |
+| RF05 — Bitácora de operaciones | La tabla existe, pero el sistema todavía no escribe en ella | Iteración 3 |
+| RF14 — Historial del cliente | No condiciona el circuito de venta | Iteración 3 |
+| RF19 — Pedidos pendientes | Diferido junto con el resto del módulo de ventas ampliado | Iteración 3 |
+| RF20 — Gestión de financiación propia | Depende del circuito de venta ya consolidado. La modalidad y la cantidad de cuotas ya se registran (RF16.8); falta el plan de cuotas y su cobro | Iteración 3 |
 
 > El diferimiento no altera la especificación ni su trazabilidad: los requerimientos permanecen especificados y se implementan en etapas posteriores.
 
 
-## Pendiente antes de escribir código
-
-1. Verificar la instalación de la base con `Seminario\verificar_instalacion.sql` en Workbench. Los dos controles que suelen fallar son las restricciones `CHECK` y las 5 vistas.
-2. Crear `backend/.env` con `DB_NAME=gestion_comercial`, que es el esquema que crea el DDL.
-3. Resolver en la carpeta la dependencia entre **RF06.7**, que asocia proveedores a un producto, y **RF15**, que quedó diferido. O se difiere también RF06.7, o RF15 sube a esta iteración.
-4. Programar la copia de seguridad diaria de **RNF13** en el equipo del comercio.
-
-Lo primero que se construye no es un módulo completo, sino la **rebanada trazadora**: autenticar → listar catálogo paginado → registrar una venta de una línea → emitir el comprobante. Atraviesa las cinco capas y prueba que el esqueleto conecta antes de rellenarlo. El detalle está en [`docs/TESTING.md`](docs/TESTING.md).
-
-
 ---
 
-*Generado desde `Seminario_Britez_Otega_Rivero.docx` y `gestion_comercial_ddl.sql`. 13 requerimientos, 54 operaciones, 16 no funcionales, 18 hallazgos y 8 supuestos.*
+*Generado desde la carpeta vigente y `gestion_comercial_ddl.sql`. 14 requerimientos, 56 operaciones, 16 no funcionales, 22 hallazgos y 8 supuestos.*

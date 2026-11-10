@@ -16,7 +16,7 @@ USE gestion_comercial;
 --  explicita y que se repiten en la operacion diaria.
 -- =====================================================================
 
--- RF12.3 / RF26.1 - productos que alcanzaron su nivel minimo
+-- RF12.3 / RF27.1 - productos que alcanzaron su nivel minimo
 CREATE OR REPLACE VIEW v_stock_bajo_minimo AS
 SELECT p.id_producto,
        p.codigo_interno,
@@ -32,7 +32,7 @@ JOIN marca     m ON m.id_marca     = p.id_marca
 WHERE p.activo = 1
   AND p.bajo_minimo = 1;
 
--- RF26.2 - valorizacion del inventario por categoria
+-- RF27.2 - valorizacion del inventario por categoria
 CREATE OR REPLACE VIEW v_valorizacion_inventario AS
 SELECT c.nombre AS categoria,
        COUNT(*)                                 AS articulos,
@@ -44,7 +44,7 @@ JOIN categoria c ON c.id_categoria = p.id_categoria
 WHERE p.activo = 1
 GROUP BY c.nombre;
 
--- RF22.2 / RF22.3 / H08 - ordenes notificadas y no retiradas en plazo.
+-- RF23.2 / RF23.3 / H08 - ordenes notificadas y no retiradas en plazo.
 -- El plazo y el porcentaje se leen de parametro_sistema, de modo que un
 -- cambio de politica comercial no obligue a modificar la vista.
 CREATE OR REPLACE VIEW v_ordenes_no_retiradas AS
@@ -68,7 +68,7 @@ WHERE o.fecha_notificacion IS NOT NULL
       (SELECT CAST(valor AS UNSIGNED)
          FROM parametro_sistema WHERE codigo = 'RETIRO_PLAZO_DIAS');
 
--- RF25.1 / RF25.2 - ventas por periodo con desglose por medio de pago
+-- RF26.1 / RF26.2 - ventas por periodo con desglose por medio de pago
 CREATE OR REPLACE VIEW v_ventas_por_medio_pago AS
 SELECT DATE(v.fecha_hora) AS fecha,
        mp.nombre          AS medio_pago,
@@ -80,7 +80,7 @@ JOIN medio_pago mp ON mp.id_medio_pago = pv.id_medio_pago
 WHERE v.estado = 'CONFIRMADA'
 GROUP BY DATE(v.fecha_hora), mp.nombre;
 
--- RF27 - ordenes de servicio por estado y periodo
+-- RF28 - ordenes de servicio por estado y periodo
 CREATE OR REPLACE VIEW v_ordenes_por_estado AS
 SELECT eo.nombre AS estado,
        COUNT(*)  AS cantidad,
@@ -142,13 +142,13 @@ INSERT INTO tipo_cliente (nombre, lista_precio_aplicable) VALUES
 -- Medios de pago relevados en H17: el comercio opera con efectivo y Mercado
 -- Pago, plataforma que canaliza tambien transferencia y tarjeta mediante la
 -- terminal Point Smart instalada en el local. Se desagrega el canal para que
--- RF25.2 pueda informar el desglose.
+-- RF26.2 pueda informar el desglose.
 INSERT INTO medio_pago (nombre) VALUES
   ('Efectivo'),
   ('Mercado Pago - transferencia o QR'),
   ('Mercado Pago - tarjeta (Point Smart)');
 
--- Ciclo de vida de la orden de servicio (RF21.6)
+-- Ciclo de vida de la orden de servicio (RF22.6)
 INSERT INTO estado_orden (codigo, nombre, orden_secuencia, es_final) VALUES
   ('RECIBIDO',       'Recibido',              1, 0),
   ('EN_DIAGNOSTICO', 'En diagnostico',        2, 0),
@@ -165,9 +165,9 @@ INSERT INTO estado_orden (codigo, nombre, orden_secuencia, es_final) VALUES
 -- Parametros de negocio: los valores provienen de la ficha de servicio
 -- tecnico vigente del comercio (H07 / H08)
 INSERT INTO parametro_sistema (codigo, valor, descripcion) VALUES
-  ('GARANTIA_DIAS',          '30',  'H07 - dias corridos de garantia desde la entrega (RF23.1)'),
-  ('RETIRO_PLAZO_DIAS',      '10',  'H08 - dias para retirar el equipo desde la notificacion (RF22.2)'),
-  ('RECARGO_DEMORA_PCT',     '15',  'H08 - porcentaje de recargo por demora en el retiro (RF22.3)'),
+  ('GARANTIA_DIAS',          '30',  'H07 - dias corridos de garantia desde la entrega (RF24.1)'),
+  ('RETIRO_PLAZO_DIAS',      '10',  'H08 - dias para retirar el equipo desde la notificacion (RF23.2)'),
+  ('RECARGO_DEMORA_PCT',     '15',  'H08 - porcentaje de recargo por demora en el retiro (RF23.3)'),
   ('SESION_INACTIVIDAD_MIN', '30',  'RNF11 - minutos de inactividad antes del cierre de sesion'),
   ('PREFIJO_CODIGO_INTERNO', 'EGC', 'RF09.1 / H02 - prefijo de los codigos de barras propios');
 

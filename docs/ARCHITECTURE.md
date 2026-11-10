@@ -162,8 +162,8 @@ Los seis módulos de la especificación son los límites naturales. La iteració
 | **Existencias** | RF11, RF12 | Iteración 1 |
 | **Clientes** | RF13 | Iteración 1 |
 | **Ventas** | RF16 a RF18 | Iteración 1 |
-| Servicio Técnico | RF20 a RF24 | Diferido |
-| Reportes | RF25 a RF27 | Diferido |
+| Servicio Técnico | RF21 a RF25 | Diferido |
+| Reportes | RF26 a RF28 | Diferido |
 
 ### Relaciones
 
