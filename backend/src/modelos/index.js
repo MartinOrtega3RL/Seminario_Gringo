@@ -11,6 +11,7 @@ import { ParametroSistema } from './sistema.js'
 import {
   Dispositivo, EstadoOrden, OrdenServicio, OrdenEstadoHistorial, FotoOrden, RepuestoUtilizado, TareaRealizada,
 } from './servicio.js'
+import { PedidoPendiente } from './pedidos.js'
 
 // --- Acceso ------------------------------------------------------------------
 Usuario.belongsTo(Persona, { foreignKey: 'idPersona', as: 'persona' })
@@ -117,6 +118,12 @@ OrdenServicio.hasMany(TareaRealizada, { foreignKey: 'idOrden', as: 'tareas' })
 TareaRealizada.belongsTo(OrdenServicio, { foreignKey: 'idOrden', as: 'orden' })
 TareaRealizada.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
 
+// --- Pedidos pendientes (RF19) -----------------------------------------------
+PedidoPendiente.belongsTo(Cliente, { foreignKey: 'idCliente', as: 'cliente' })
+PedidoPendiente.belongsTo(Producto, { foreignKey: 'idProducto', as: 'producto' })
+PedidoPendiente.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
+Cliente.hasMany(PedidoPendiente, { foreignKey: 'idCliente', as: 'pedidos' })
+
 export {
   Persona, Perfil, Modulo, Permiso, Usuario, Sesion,
   Categoria, Marca, Producto, ModeloDispositivo, ProductoModeloCompatible,
@@ -125,4 +132,5 @@ export {
   MedioPago, Venta, DetalleVenta, PagoVenta,
   ParametroSistema,
   Dispositivo, EstadoOrden, OrdenServicio, OrdenEstadoHistorial, FotoOrden, RepuestoUtilizado, TareaRealizada,
+  PedidoPendiente,
 }

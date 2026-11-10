@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router'
 import { useSesion } from './sesion.jsx'
 import { Boton } from '../ui/Boton.jsx'
 import {
-  IconoCatalogo, IconoVenta, IconoSalir, IconoHistorial, IconoClientes, IconoUsuarios, IconoServicio,
+  IconoCatalogo, IconoVenta, IconoSalir, IconoHistorial, IconoClientes, IconoUsuarios, IconoServicio, IconoReportes, IconoPedidos,
 } from '../ui/Iconos.jsx'
 
 // Barra superior, no barra lateral. La lateral con iconos y tarjetas blancas
@@ -15,9 +15,11 @@ import {
 const SECCIONES = [
   { a: '/venta', texto: 'Mostrador', modulo: 'VENTAS', Icono: IconoVenta, exacta: true },
   { a: '/ventas', texto: 'Ventas', modulo: 'VENTAS', Icono: IconoHistorial },
+  { a: '/pedidos', texto: 'Pedidos', modulo: 'VENTAS', Icono: IconoPedidos },
   { a: '/servicio', texto: 'Servicio técnico', modulo: 'SERVICIO_TECNICO', Icono: IconoServicio },
   { a: '/productos', texto: 'Productos', modulo: 'CATALOGO_STOCK', Icono: IconoCatalogo },
   { a: '/clientes', texto: 'Clientes y proveedores', modulo: 'CLIENTES_PROV', Icono: IconoClientes },
+  { a: '/reportes', texto: 'Reportes', modulo: 'REPORTES', Icono: IconoReportes },
   { a: '/usuarios', texto: 'Usuarios', modulo: 'ADMIN_SEGURIDAD', Icono: IconoUsuarios },
 ]
 

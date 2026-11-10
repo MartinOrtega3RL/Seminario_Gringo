@@ -141,3 +141,15 @@ export const IconoCampana = (props) => (
     <path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" />
   </Trazo>
 )
+
+export const IconoReportes = (props) => (
+  <Trazo {...props}>
+    <path d="M4 20h16M7 20v-6M12 20V8M17 20v-9" />
+  </Trazo>
+)
+
+export const IconoPedidos = (props) => (
+  <Trazo {...props}>
+    <path d="M6 4h12v16H6zM9 9h6M9 13h6M9 17h4" />
+  </Trazo>
+)

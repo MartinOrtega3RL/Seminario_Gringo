@@ -20,6 +20,8 @@ import { rutasClientes } from './modulos/clientes/clientes.rutas.js'
 import { rutasProveedores } from './modulos/proveedores/proveedores.rutas.js'
 import { crearRutasVentas } from './modulos/ventas/ventas.rutas.js'
 import { crearRutasServicio } from './modulos/servicio/servicio.rutas.js'
+import { rutasReportes } from './modulos/reportes/reportes.rutas.js'
+import { rutasPedidos } from './modulos/pedidos/pedidos.rutas.js'
 
 import { verificarGenerador } from './modulos/ventas/comprobante/comprobante.puerto.js'
 import { generadorHtml } from './modulos/ventas/comprobante/comprobante.html.js'
@@ -65,6 +67,8 @@ const armarAplicacion = () => {
   aplicacion.use('/api/proveedores', rutasProveedores)
   aplicacion.use('/api/ventas', crearRutasVentas({ generadorComprobante }))
   aplicacion.use('/api/servicio', crearRutasServicio())
+  aplicacion.use('/api/reportes', rutasReportes)
+  aplicacion.use('/api/pedidos', rutasPedidos)
 
   aplicacion.use(rutaNoEncontrada)
   aplicacion.use(manejarErrores)

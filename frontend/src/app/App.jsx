@@ -10,13 +10,21 @@ import { Catalogo } from '../modulos/catalogo/paginas/Catalogo.jsx'
 import { Clasificaciones } from '../modulos/catalogo/paginas/Clasificaciones.jsx'
 import { Existencias } from '../modulos/existencias/paginas/Existencias.jsx'
 import { Clientes } from '../modulos/clientes/paginas/Clientes.jsx'
+import { FichaCliente, InicioFichaCliente } from '../modulos/clientes/paginas/FichaCliente.jsx'
+import { HistorialComprasCliente } from '../modulos/clientes/componentes/HistorialComprasCliente.jsx'
+import { HistorialReparacionesCliente } from '../modulos/clientes/componentes/HistorialReparacionesCliente.jsx'
 import { Proveedores } from '../modulos/proveedores/paginas/Proveedores.jsx'
 import { PuntoDeVenta } from '../modulos/ventas/paginas/PuntoDeVenta.jsx'
 import { HistorialVentas } from '../modulos/ventas/paginas/HistorialVentas.jsx'
 import { Comprobante } from '../modulos/ventas/paginas/Comprobante.jsx'
+import { Pedidos } from '../modulos/pedidos/paginas/Pedidos.jsx'
 import { Ordenes } from '../modulos/servicio/paginas/Ordenes.jsx'
 import { NuevaOrden } from '../modulos/servicio/paginas/NuevaOrden.jsx'
 import { FichaOrden } from '../modulos/servicio/paginas/FichaOrden.jsx'
+import { Reportes } from '../modulos/reportes/paginas/Reportes.jsx'
+import { ReporteComercial } from '../modulos/reportes/componentes/ReporteComercial.jsx'
+import { ReporteInventario } from '../modulos/reportes/componentes/ReporteInventario.jsx'
+import { ReporteServicio } from '../modulos/reportes/componentes/ReporteServicio.jsx'
 import { Vacio } from '../ui/Estados.jsx'
 
 const Espera = () => (
@@ -82,6 +90,7 @@ const Rutas = () => (
 
       <Route path="/venta" element={conPermiso('VENTAS', <PuntoDeVenta />)} />
       <Route path="/ventas" element={conPermiso('VENTAS', <HistorialVentas />)} />
+      <Route path="/pedidos" element={conPermiso('VENTAS', <Pedidos />)} />
       <Route path="/venta/:idVenta/comprobante" element={conPermiso('VENTAS', <Comprobante />)} />
 
       {/* Servicio técnico: el listado, la recepción y la ficha de cada orden.
@@ -106,7 +115,17 @@ const Rutas = () => (
         <Route index element={<Clientes />} />
         <Route path="proveedores" element={<Proveedores />} />
       </Route>
+      <Route path="/clientes/:idCliente" element={conPermiso('CLIENTES_PROV', <FichaCliente />)}>
+        <Route index element={<InicioFichaCliente />} />
+        <Route path="compras" element={conPermiso('VENTAS', <HistorialComprasCliente />)} />
+        <Route path="reparaciones" element={conPermiso('SERVICIO_TECNICO', <HistorialReparacionesCliente />)} />
+      </Route>
       <Route path="/usuarios" element={conPermiso('ADMIN_SEGURIDAD', <Usuarios />)} />
+      <Route path="/reportes" element={conPermiso('REPORTES', <Reportes />)}>
+        <Route index element={<ReporteComercial />} />
+        <Route path="inventario" element={<ReporteInventario />} />
+        <Route path="servicio" element={<ReporteServicio />} />
+      </Route>
       <Route path="/mi-cuenta" element={<MiCuenta />} />
 
       <Route
