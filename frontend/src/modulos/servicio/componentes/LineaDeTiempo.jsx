@@ -1,4 +1,4 @@
-import { fechaHora, MEDIOS_NOTIFICACION } from '../servicio.reglas.js'
+import { fechaHora, nombreEstado, MEDIOS_NOTIFICACION } from '../servicio.reglas.js'
 
 // RF22.6 / RF23.1 — todo lo que le pasó a la orden, y quién lo hizo. Lo más
 // reciente arriba: lo que se quiere saber al abrir una ficha es en qué quedó,
@@ -27,7 +27,7 @@ export const LineaDeTiempo = ({ historial }) => {
 
             <div className="min-w-0 flex-1">
               <p className={`text-sm font-semibold ${actual ? 'text-crema' : 'text-crema/80'}`}>
-                {paso.estado.nombre}
+                {nombreEstado(paso.estado)}
                 {paso.medioNotificacion && (
                   <span className="ms-2 text-xs font-normal text-crema/60">
                     por {MEDIOS_NOTIFICACION[paso.medioNotificacion]}

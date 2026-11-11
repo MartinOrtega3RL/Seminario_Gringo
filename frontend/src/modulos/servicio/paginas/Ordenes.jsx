@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useListadoPaginado } from '../../../ganchos/useListadoPaginado.js'
 import { listarOrdenes, rutaOrden } from '../servicio.api.js'
 import { abrirDocumento } from '../../../api/cliente.js'
-import { nombreEquipo, tonoDeEstado, fechaCorta, hoyIso, haceDiasIso } from '../servicio.reglas.js'
+import { nombreEquipo, nombreEstado, tonoDeEstado, fechaCorta, hoyIso, haceDiasIso } from '../servicio.reglas.js'
 import { Paginacion } from '../../catalogo/componentes/Paginacion.jsx'
 import { Encabezado } from '../../../ui/Panel.jsx'
 import { Boton } from '../../../ui/Boton.jsx'
@@ -176,7 +176,7 @@ export const Ordenes = () => {
                 key={fila.codigo}
                 activo={estado === fila.codigo}
                 onClick={() => { setEstado(estado === fila.codigo ? '' : fila.codigo); setSoloNoRetiradas(false) }}
-                texto={fila.nombre}
+                texto={nombreEstado(fila)}
                 cantidad={fila.cantidad}
               />
             ))}
@@ -236,7 +236,7 @@ export const Ordenes = () => {
                     <span className="flex items-center gap-2">
                       {orden.idOrdenAnterior && <Marca>Reingreso</Marca>}
                       <Marca tono={tonoDeEstado(orden.estado.codigo, orden.noRetirada)}>
-                        {orden.noRetirada ? 'Sin retirar' : orden.estado.nombre}
+                        {orden.noRetirada ? 'Sin retirar' : nombreEstado(orden.estado)}
                       </Marca>
                     </span>
                   }

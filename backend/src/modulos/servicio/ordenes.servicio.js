@@ -12,11 +12,12 @@ import { registroDe } from '../../registro.js'
 import {
   formatearNumeroOrden, operacionesDisponibles, cambiosManuales, puedeDarseComoReparada,
   estaNoRetirada, limiteNoRetirada, diasCalendario, liquidar, vencimientoGarantia, evaluarGarantia,
-  inicioDeDia, finDeDia,
 } from './servicio.reglas.js'
+import { inicioDeDia, finDeDia } from '../../http/fechas.js'
 import {
   operar, exigir, pasarA, anotar, estadoPorCodigo, estadosPorCodigo, tecnicoSiFalta, reglasDeNegocio,
 } from './ordenes.nucleo.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const log = registroDe('servicio')
 
@@ -83,7 +84,7 @@ const RELACIONES_DETALLE = [
  * que valdria si se entregara hoy. Todo lo derivado se calcula aca, con las
  * reglas, y no en la interfaz: asi hay un solo lugar que decide.
  */
-const presentar = async (orden, perfil, hoy) => {
+const presentar = async (orden, permisos, hoy) => {
   const plano = orden.get({ plain: true })
   const codigo = plano.estado.codigo
   const { garantiaDias, plazoRetiroDias, recargoPct } = await reglasDeNegocio()
@@ -119,7 +120,7 @@ const presentar = async (orden, perfil, hoy) => {
   const centavosPresupuesto = aCentavos(plano.montoPresupuestado ?? 0)
   const centavosRepuestos = plano.repuestos.reduce((suma, r) => suma + aCentavos(r.precioUnitario) * r.cantidad, 0)
 
-  const conCosto = puedeVerCosto(perfil)
+  const conCosto = puedeVerCosto(permisos)
   const repuestos = plano.repuestos.map(({ costoUnitario, ...resto }) => ({
     ...resto,
     subtotal: aPesos(aCentavos(resto.precioUnitario) * resto.cantidad),
@@ -160,10 +161,10 @@ const presentar = async (orden, perfil, hoy) => {
   }
 }
 
-export const detalleOrden = async (idOrden, perfil, hoy = new Date()) => {
+export const detalleOrden = async (idOrden, permisos, hoy = new Date()) => {
   const orden = await OrdenServicio.findByPk(idOrden, { include: RELACIONES_DETALLE })
   if (!orden) throw new NoEncontrado('La orden de servicio')
-  return presentar(orden, perfil, hoy)
+  return presentar(orden, permisos, hoy)
 }
 
 /** Los once estados, para los filtros y para nombrar los cambios manuales. */
@@ -380,6 +381,18 @@ export const recepcionar = async (datos, idUsuario) => {
       observacion: datos.idOrdenAnterior ? 'Reingreso por garantía' : 'Recepción del equipo',
     }, transaction)
 
+    await registrarEnBitacora({
+      entidad: 'orden_servicio',
+      idRegistro: orden.idOrden,
+      accion: 'ALTA',
+      despues: {
+        numeroOrden: formatearNumeroOrden(orden.idOrden),
+        idCliente: datos.idCliente,
+        idDispositivo: dispositivo.idDispositivo,
+        estado: recibido.codigo,
+      },
+    }, transaction)
+
     return orden.idOrden
   })
 
@@ -478,7 +491,9 @@ export const cambiarEstado = (idOrden, { codigo, observacion }, idUsuario) =>
     if (codigo === 'NO_REPARABLE') exigirMotivo(observacion, 'por qué no tiene arreglo')
     if (codigo === 'ANULADA') exigirMotivo(observacion, 'por qué se anula')
 
-    const cambios = codigo === 'EN_REPARACION' ? tecnicoSiFalta(orden, idUsuario) : {}
+    // Tomar la orden (pasarla a diagnostico) o empezar la reparacion la dejan a
+    // nombre de quien lo hace, si todavia no tenia tecnico.
+    const cambios = ['EN_DIAGNOSTICO', 'EN_REPARACION'].includes(codigo) ? tecnicoSiFalta(orden, idUsuario) : {}
     await pasarA(orden, estado, codigo, { idUsuario, observacion: observacion ?? null, cambios }, transaction)
 
     log.info({ idOrden, hacia: codigo, usuario: idUsuario }, 'estado de la orden actualizado')

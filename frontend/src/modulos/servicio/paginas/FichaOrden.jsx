@@ -4,7 +4,9 @@ import { buscarOrden, rutaOrden } from '../servicio.api.js'
 import { abrirDocumento } from '../../../api/cliente.js'
 import {
   nombreEquipo, tonoDeEstado, fechaHora, soloFecha, diasRestantes, SELLOS,
+  nombreEstado, describirCambio, momentoDeOrden,
 } from '../servicio.reglas.js'
+import { RecorridoOrden } from '../componentes/RecorridoOrden.jsx'
 import { PanelProceso } from '../componentes/PanelProceso.jsx'
 import { PanelReparacion } from '../componentes/PanelReparacion.jsx'
 import { GaleriaFotos } from '../componentes/GaleriaFotos.jsx'
@@ -13,7 +15,7 @@ import { Encabezado, Titulo, Precio } from '../../../ui/Panel.jsx'
 import { Boton } from '../../../ui/Boton.jsx'
 import { Marca } from '../../../ui/Listado.jsx'
 import { Cargando, Vacio, Fallo, Aviso } from '../../../ui/Estados.jsx'
-import { IconoImprimir, IconoCampana } from '../../../ui/Iconos.jsx'
+import { IconoImprimir, IconoCampana, IconoTilde, IconoCerrar } from '../../../ui/Iconos.jsx'
 import { useSesion } from '../../../app/sesion.jsx'
 
 // La ficha de una orden de servicio: lo que antes era una hoja de papel por
@@ -40,6 +42,26 @@ export const FichaOrden = () => {
   const [orden, setOrden] = useState(null)
   const [error, setError] = useState(null)
   const [errorDocumento, setErrorDocumento] = useState(null)
+  const [confirmacion, setConfirmacion] = useState(null)
+
+  // Cada guardado se confirma en pantalla con lo que quedó registrado y, si la
+  // orden avanzó, con lo que sigue. El técnico no tiene que adivinar si el clic
+  // tomó.
+  const actualizar = (nueva) => {
+    const texto = describirCambio(orden, nueva)
+    if (texto) {
+      const avanzo = orden && nueva.estado.codigo !== orden.estado.codigo
+      const sigue = avanzo ? momentoDeOrden(nueva.estado.codigo) : null
+      setConfirmacion({ texto, sigue, clave: Date.now() })
+    }
+    setOrden(nueva)
+  }
+
+  useEffect(() => {
+    if (!confirmacion) return undefined
+    const reloj = setTimeout(() => setConfirmacion(null), 7000)
+    return () => clearTimeout(reloj)
+  }, [confirmacion])
 
   // Solo la primera visita despues de recibir el equipo muestra el aviso de la
   // orden recien creada: recargar la pagina no debe repetirlo.
@@ -110,7 +132,7 @@ export const FichaOrden = () => {
           tamano="text-4xl"
           derecha={
             <div className="flex flex-wrap items-center gap-3">
-              <Marca tono={tonoDeEstado(orden.estado.codigo, orden.noRetirada)}>{orden.estado.nombre}</Marca>
+              <Marca tono={tonoDeEstado(orden.estado.codigo, orden.noRetirada)}>{nombreEstado(orden.estado)}</Marca>
               <Boton tono="papel" onClick={imprimir}>
                 <IconoImprimir className="size-5" />
                 Imprimir la orden
@@ -147,8 +169,25 @@ export const FichaOrden = () => {
         </div>
       )}
 
+      <RecorridoOrden orden={orden} />
+
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="grid gap-5">
+          {escritura && <PanelProceso orden={orden} alActualizar={actualizar} />}
+
+          <div id="reparacion" className="scroll-mt-4">
+            <PanelReparacion orden={orden} alActualizar={actualizar} />
+          </div>
+
+          {/* Mientras se puede editar, el diagnostico vive en «Que sigue»; despues
+              queda a la vista, de solo lectura. */}
+          {orden.diagnosticoTecnico && !(escritura && orden.operaciones.includes('diagnosticar')) && (
+            <section className="panel-oscuro p-5">
+              <Titulo nivel={3} className="text-base">Diagnóstico</Titulo>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-crema/85">{orden.diagnosticoTecnico}</p>
+            </section>
+          )}
+
           {/* La ficha de ingreso: el papel. Lo que se firmo no cambia. */}
           <section className="panel p-5" aria-label="Ficha de ingreso">
             <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -211,26 +250,13 @@ export const FichaOrden = () => {
             )}
           </section>
 
-          {escritura && <PanelProceso orden={orden} alActualizar={setOrden} />}
-
-          {/* Mientras se puede editar, el diagnostico vive en «Que sigue»; despues
-              queda a la vista, de solo lectura. */}
-          {orden.diagnosticoTecnico && !(escritura && orden.operaciones.includes('diagnosticar')) && (
-            <section className="panel-oscuro p-5">
-              <Titulo nivel={3} className="text-base">Diagnóstico</Titulo>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-crema/85">{orden.diagnosticoTecnico}</p>
-            </section>
-          )}
-
-          <PanelReparacion orden={orden} alActualizar={setOrden} />
-
           <section className="panel-oscuro grid gap-3 p-5" aria-label="Fotos">
             <Titulo nivel={3} className="text-base">Fotos</Titulo>
             <GaleriaFotos
               idOrden={orden.idOrden}
               fotos={orden.fotos}
               puedeAgregar={escritura && orden.estado.codigo !== 'ANULADA'}
-              alActualizar={setOrden}
+              alActualizar={actualizar}
             />
           </section>
         </div>
@@ -295,6 +321,39 @@ export const FichaOrden = () => {
             <LineaDeTiempo historial={orden.historial} />
           </section>
         </aside>
+      </div>
+
+      {/* El aviso de lo guardado flota abajo: el técnico suele estar abajo de
+          todo, anotando tareas, y un aviso arriba de la página no lo vería. */}
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex justify-end sm:inset-x-auto sm:right-6 sm:bottom-6">
+        {confirmacion && (
+          <div
+            key={confirmacion.clave}
+            role="status"
+            className="aviso-guardado pointer-events-auto flex w-full max-w-sm items-start gap-3 border-2 border-tinta bg-crema px-4 py-3 text-tinta shadow-[0_10px_30px_-8px_rgb(0_0_0/0.55)]"
+          >
+            <span className="mt-0.5 grid size-6 shrink-0 place-items-center bg-tinta text-crema" aria-hidden="true">
+              <IconoTilde className="size-4" />
+            </span>
+            <span className="grid flex-1 gap-1">
+              <span className="text-sm font-semibold leading-snug">{confirmacion.texto}</span>
+              {confirmacion.sigue?.que && (
+                <span className="text-xs leading-snug text-tinta/70">
+                  Sigue: {confirmacion.sigue.que.toLowerCase()}
+                  {confirmacion.sigue.turno && ` (le toca al ${confirmacion.sigue.turno.toLowerCase()})`}.
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setConfirmacion(null)}
+              aria-label="Cerrar el aviso"
+              className="grid size-6 shrink-0 place-items-center text-tinta/60 hover:text-tinta"
+            >
+              <IconoCerrar className="size-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import { unlink } from 'node:fs/promises'
 import { z } from 'zod'
 import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
+import { permisosDelUsuario } from '../../http/middlewares/autorizar.js'
 import { DatosInvalidos } from '../../errores.js'
 import {
   detalleOrden, listarOrdenes, listarEstados, recepcionar, diagnosticar, presupuestar,
@@ -105,7 +106,8 @@ export const crearControladorServicio = () => {
   const conDetalle = (operacion, estado = 200) => async (peticion, respuesta) => {
     const idOrden = id.parse(peticion.params.idOrden)
     await operacion(idOrden, peticion)
-    return respuesta.status(estado).json({ datos: await detalleOrden(idOrden, peticion.usuario.perfil) })
+    const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
+    return respuesta.status(estado).json({ datos: await detalleOrden(idOrden, permisos) })
   }
 
   return {
@@ -122,13 +124,16 @@ export const crearControladorServicio = () => {
       return respuesta.json({ ...responderPaginado(resultado, paginacion), resumen })
     },
 
-    detalle: async (peticion, respuesta) =>
-      respuesta.json({ datos: await detalleOrden(id.parse(peticion.params.idOrden), peticion.usuario.perfil) }),
+    detalle: async (peticion, respuesta) => {
+      const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
+      return respuesta.json({ datos: await detalleOrden(id.parse(peticion.params.idOrden), permisos) })
+    },
 
     // RF21.1 a RF21.8
     recepcionar: async (peticion, respuesta) => {
       const idOrden = await recepcionar(esquemaRecepcion.parse(peticion.body), peticion.usuario.idUsuario)
-      return respuesta.status(201).json({ datos: await detalleOrden(idOrden, peticion.usuario.perfil) })
+      const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
+      return respuesta.status(201).json({ datos: await detalleOrden(idOrden, permisos) })
     },
 
     diagnosticar: conDetalle((idOrden, peticion) =>
@@ -179,7 +184,7 @@ export const crearControladorServicio = () => {
 
       // registrarFoto borra el archivo por su cuenta si la orden no existe.
       await registrarFoto(idOrden, { archivo: peticion.file, ...campos })
-      return respuesta.status(201).json({ datos: await detalleOrden(idOrden, peticion.usuario.perfil) })
+      return respuesta.status(201).json({ datos: await detalleOrden(idOrden, await permisosDelUsuario(peticion.usuario.idPerfil)) })
     },
 
     // La foto sale por una ruta con sesion y permiso: no es un archivo publico.
@@ -191,7 +196,7 @@ export const crearControladorServicio = () => {
 
     // RF21.9
     documento: async (peticion, respuesta) => {
-      const orden = await detalleOrden(id.parse(peticion.params.idOrden), peticion.usuario.perfil)
+      const orden = await detalleOrden(id.parse(peticion.params.idOrden), await permisosDelUsuario(peticion.usuario.idPerfil))
       const emitido = generarDocumentoOrden(orden)
 
       respuesta.type(emitido.tipoMime)

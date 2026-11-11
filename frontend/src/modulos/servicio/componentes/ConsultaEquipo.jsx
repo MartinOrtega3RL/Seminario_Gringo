@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { nombreEquipo, soloFecha, diasRestantes, fechaCorta } from '../servicio.reglas.js'
+import { nombreEquipo, nombreEstado, soloFecha, diasRestantes, fechaCorta } from '../servicio.reglas.js'
 import { Marca } from '../../../ui/Listado.jsx'
 
 // RF24.2 — "consultar la vigencia de la garantía de una reparación previa al
@@ -78,7 +78,7 @@ export const ConsultaEquipo = ({ consulta, vincular, alVincular }) => {
             </Link>
             <span>{fechaCorta(orden.fechaIngreso)}</span>
             <span className="min-w-0 truncate">{orden.fallaDeclarada}</span>
-            <span className="text-crema/50">· {orden.estado.nombre}</span>
+            <span className="text-crema/50">· {nombreEstado(orden.estado)}</span>
           </li>
         ))}
       </ul>

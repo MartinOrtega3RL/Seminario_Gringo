@@ -3,6 +3,7 @@ import { OrdenServicio, EstadoOrden, OrdenEstadoHistorial } from '../../modelos/
 import { leerParametro } from '../../modelos/sistema.js'
 import { NoEncontrado, DatosInvalidos } from '../../errores.js'
 import { admite, transicionPermitida } from './servicio.reglas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 // Lo que comparten todas las operaciones sobre una orden. Esta aca y no repetido
 // en cada una porque son las dos reglas que no pueden diferir entre operaciones:
@@ -76,6 +77,19 @@ export const pasarA = async (orden, estadoActual, codigoDestino, contexto, trans
 
   await orden.update({ ...cambios, idEstadoActual: destino.idEstado }, { transaction })
   await anotar(orden.idOrden, destino.idEstado, { idUsuario, observacion, medio }, transaction)
+
+  await registrarEnBitacora({
+    entidad: 'orden_servicio',
+    idRegistro: orden.idOrden,
+    accion: 'MODIFICACION',
+    antes: { estado: estadoActual.codigo },
+    despues: {
+      estado: destino.codigo,
+      ...(cambios.montoTotal !== undefined ? { montoTotal: cambios.montoTotal } : {}),
+      ...(cambios.recargoAplicado !== undefined ? { recargoAplicado: cambios.recargoAplicado } : {}),
+    },
+    detalle: `${estadoActual.codigo} -> ${destino.codigo}`,
+  }, transaction)
 
   return destino
 }
