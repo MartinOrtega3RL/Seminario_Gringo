@@ -98,20 +98,24 @@ ORDER BY eo.orden_secuencia;
 --  operar: no habria perfiles, modulos, permisos ni estados de orden.
 -- =====================================================================
 
--- Perfiles relevados en H13 (titular, colaboradora y tecnico)
+-- Perfiles relevados en H13 (titular, colaboradora y tecnico), mas el de
+-- soporte del sistema, que no es del comercio sino del equipo que lo mantiene
+-- (decision del equipo: perfiles, permisos y bitacora no son tareas del negocio)
 INSERT INTO perfil (nombre, descripcion) VALUES
-  ('Administrador', 'Acceso total. Unico perfil habilitado para reportes y precios de costo (RF04.2)'),
+  ('Administrador', 'Todo el negocio: usuarios, reportes y precios de costo (RF04.2). Perfiles, permisos y bitacora son de Soporte'),
   ('Vendedor',      'Ventas, clientes, consulta del catalogo y registro de ingresos de mercaderia (H28)'),
-  ('Tecnico',       'Servicio tecnico, clientes y consulta del catalogo');
+  ('Tecnico',       'Servicio tecnico, clientes y consulta del catalogo'),
+  ('Soporte',       'Soporte del sistema (equipo de desarrollo): perfiles, permisos y bitacora, ademas de todo el negocio');
 
 -- Modulos del sistema (RF03.2 / S06)
 INSERT INTO modulo (codigo, nombre, descripcion) VALUES
-  ('ADMIN_SEGURIDAD',  'Administracion y seguridad', 'Modulo 1 - exclusivo del Administrador'),
+  ('ADMIN_SEGURIDAD',  'Administracion y seguridad', 'Modulo 1 - usuarios del comercio; Administrador y Soporte'),
   ('CATALOGO_STOCK',   'Catalogo y existencias',     'Modulo 2 - compartido'),
   ('CLIENTES_PROV',    'Clientes y proveedores',     'Modulo 3 - compartido'),
   ('VENTAS',           'Ventas',                     'Modulo 4 - Administrador y Vendedor'),
   ('SERVICIO_TECNICO', 'Servicio tecnico',           'Modulo 5 - Administrador y Tecnico'),
-  ('REPORTES',         'Reportes',                   'Modulo 6 - restringido al Administrador');
+  ('REPORTES',         'Reportes',                   'Modulo 6 - restringido al Administrador'),
+  ('SOPORTE_SISTEMA',  'Soporte del sistema',        'Transversal - perfiles, permisos y bitacora; exclusivo de Soporte');
 
 -- Matriz de permisos (RF03.3 / RF03.4), segun la tabla
 -- "Organizacion modular del sistema" de la especificacion
@@ -129,7 +133,14 @@ FROM (
   SELECT 'Vendedor',      'VENTAS',           1, 1 UNION ALL
   SELECT 'Tecnico',       'CATALOGO_STOCK',   1, 0 UNION ALL
   SELECT 'Tecnico',       'CLIENTES_PROV',    1, 1 UNION ALL
-  SELECT 'Tecnico',       'SERVICIO_TECNICO', 1, 1
+  SELECT 'Tecnico',       'SERVICIO_TECNICO', 1, 1 UNION ALL
+  SELECT 'Soporte',       'ADMIN_SEGURIDAD',  1, 1 UNION ALL
+  SELECT 'Soporte',       'CATALOGO_STOCK',   1, 1 UNION ALL
+  SELECT 'Soporte',       'CLIENTES_PROV',    1, 1 UNION ALL
+  SELECT 'Soporte',       'VENTAS',           1, 1 UNION ALL
+  SELECT 'Soporte',       'SERVICIO_TECNICO', 1, 1 UNION ALL
+  SELECT 'Soporte',       'REPORTES',         1, 1 UNION ALL
+  SELECT 'Soporte',       'SOPORTE_SISTEMA',  1, 1
 ) x
 JOIN perfil pf ON pf.nombre  = x.perfil
 JOIN modulo mo ON mo.codigo  = x.modulo;
@@ -146,7 +157,8 @@ INSERT INTO tipo_cliente (nombre, lista_precio_aplicable) VALUES
 INSERT INTO medio_pago (nombre) VALUES
   ('Efectivo'),
   ('Mercado Pago - transferencia o QR'),
-  ('Mercado Pago - tarjeta (Point Smart)');
+  ('Mercado Pago - tarjeta (Point Smart)'),
+  ('GO Cuotas');
 
 -- Ciclo de vida de la orden de servicio (RF22.6)
 INSERT INTO estado_orden (codigo, nombre, orden_secuencia, es_final) VALUES

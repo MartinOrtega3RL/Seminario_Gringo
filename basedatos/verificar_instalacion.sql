@@ -65,16 +65,16 @@ WHERE TABLE_SCHEMA = 'gestion_comercial'
   AND TABLE_NAME = 'producto' AND INDEX_TYPE = 'FULLTEXT'
 
 -- ---------- datos de referencia: sin esto el sistema no arranca ----------
-UNION ALL SELECT 'Datos · perfiles',        CAST(COUNT(*) AS CHAR), '3',
-  IF(COUNT(*) = 3, 'OK', 'REVISAR') FROM perfil
-UNION ALL SELECT 'Datos · módulos',         CAST(COUNT(*) AS CHAR), '6',
-  IF(COUNT(*) = 6, 'OK', 'REVISAR') FROM modulo
-UNION ALL SELECT 'Datos · permisos',        CAST(COUNT(*) AS CHAR), '12 (solo las combinaciones habilitadas)',
-  IF(COUNT(*) = 12, 'OK', 'REVISAR') FROM permiso
+UNION ALL SELECT 'Datos · perfiles',        CAST(COUNT(*) AS CHAR), '4',
+  IF(COUNT(*) = 4, 'OK', 'REVISAR') FROM perfil
+UNION ALL SELECT 'Datos · módulos',         CAST(COUNT(*) AS CHAR), '7',
+  IF(COUNT(*) = 7, 'OK', 'REVISAR') FROM modulo
+UNION ALL SELECT 'Datos · permisos',        CAST(COUNT(*) AS CHAR), '19 (solo las combinaciones habilitadas)',
+  IF(COUNT(*) = 19, 'OK', 'REVISAR') FROM permiso
 UNION ALL SELECT 'Datos · tipos de cliente', CAST(COUNT(*) AS CHAR), '2',
   IF(COUNT(*) = 2, 'OK', 'REVISAR') FROM tipo_cliente
-UNION ALL SELECT 'Datos · medios de pago',  CAST(COUNT(*) AS CHAR), '3',
-  IF(COUNT(*) = 3, 'OK', 'REVISAR') FROM medio_pago
+UNION ALL SELECT 'Datos · medios de pago',  CAST(COUNT(*) AS CHAR), '4',
+  IF(COUNT(*) = 4, 'OK', 'REVISAR') FROM medio_pago
 UNION ALL SELECT 'Datos · estados de orden', CAST(COUNT(*) AS CHAR), '7 o mas',
   IF(COUNT(*) >= 7, 'OK', 'REVISAR') FROM estado_orden
 UNION ALL SELECT 'Datos · parámetros',      CAST(COUNT(*) AS CHAR), '5',

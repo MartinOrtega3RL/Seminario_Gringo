@@ -25,6 +25,8 @@ const cargarPermisos = async (idPerfil) => {
 
 const permisosDe = async (idPerfil) => cache.get(idPerfil) ?? cargarPermisos(idPerfil)
 
+export const permisosDelUsuario = (idPerfil) => permisosDe(idPerfil)
+
 // Invalidar tras modificar la matriz, para no reiniciar el servidor.
 export const olvidarPermisos = () => cache.clear()
 

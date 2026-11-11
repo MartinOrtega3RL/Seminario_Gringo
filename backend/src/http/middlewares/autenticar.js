@@ -5,6 +5,7 @@ import { entorno } from '../../config/entorno.js'
 import { Sesion, Usuario, Perfil } from '../../modelos/index.js'
 import { leerParametro } from '../../modelos/sistema.js'
 import { NoAutenticado } from '../../errores.js'
+import { fijarUsuarioEnContexto } from '../contexto.js'
 
 // En la tabla se guarda el hash del token, no el token: si alguien lee la
 // base, no puede hacerse pasar por una sesion abierta.
@@ -68,6 +69,7 @@ export const autenticar = async (peticion, _respuesta, siguiente) => {
     idPerfil: usuario.idPerfil,
     perfil: usuario.perfil.nombre,
   }
+  fijarUsuarioEnContexto(usuario.idUsuario)
   peticion.idSesion = sesion.idSesion
 
   siguiente()

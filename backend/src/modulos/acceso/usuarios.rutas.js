@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { autenticar } from '../../http/middlewares/autenticar.js'
-import { autorizar } from '../../http/middlewares/autorizar.js'
+import { autorizar, permisosDelUsuario } from '../../http/middlewares/autorizar.js'
 import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
 import {
   listarUsuarios, buscarUsuario, listarPerfiles,
@@ -10,8 +10,11 @@ import {
 
 // RF02 — administracion de usuarios. Modulo exclusivo del Administrador.
 
+// Letras de cualquier tipo, con ñ y acentos: «Dueño» es un nombre de usuario
+// normal en castellano. La base compara sin distinguir acentos, asi que
+// «Dueño» y «Dueno» son el mismo usuario y no pueden coexistir.
 const nombreUsuario = z.string().trim()
-  .regex(/^[a-zA-Z0-9._-]{3,50}$/, 'Entre 3 y 50 caracteres, sin espacios ni acentos.')
+  .regex(/^[\p{L}\p{N}._-]{3,50}$/u, 'Entre 3 y 50 letras, números, puntos o guiones, sin espacios.')
 
 const esquemaAlta = z.object({
   apellidoNombre: z.string().trim().min(2, 'Cargá el nombre.').max(150),
@@ -32,9 +35,12 @@ rutasUsuarios.use(autenticar)
 const leer = autorizar('ADMIN_SEGURIDAD', 'lectura')
 const escribir = autorizar('ADMIN_SEGURIDAD', 'escritura')
 
+// La matriz de quien pide decide si puede tocar usuarios de soporte.
+const permisosDe = (peticion) => permisosDelUsuario(peticion.usuario.idPerfil)
+
 // Antes de /:idUsuario, o Express tomaria "perfiles" como identificador.
-rutasUsuarios.get('/perfiles', leer, async (_peticion, respuesta) =>
-  respuesta.json({ datos: await listarPerfiles() }))
+rutasUsuarios.get('/perfiles', leer, async (peticion, respuesta) =>
+  respuesta.json({ datos: await listarPerfiles(await permisosDe(peticion)) }))
 
 rutasUsuarios.get('/', leer, async (peticion, respuesta) => {
   const paginacion = leerPaginacion(peticion.query)
@@ -45,7 +51,7 @@ rutasUsuarios.get('/', leer, async (peticion, respuesta) => {
 })
 
 rutasUsuarios.post('/', escribir, async (peticion, respuesta) =>
-  respuesta.status(201).json({ datos: await registrarUsuario(esquemaAlta.parse(peticion.body)) }))
+  respuesta.status(201).json({ datos: await registrarUsuario(esquemaAlta.parse(peticion.body), await permisosDe(peticion)) }))
 
 rutasUsuarios.get('/:idUsuario', leer, async (peticion, respuesta) =>
   respuesta.json({ datos: await buscarUsuario(esquemaId.parse(peticion.params.idUsuario)) }))
@@ -55,10 +61,11 @@ rutasUsuarios.put('/:idUsuario', escribir, async (peticion, respuesta) =>
     datos: await modificarUsuario(
       esquemaId.parse(peticion.params.idUsuario),
       esquemaEdicion.parse(peticion.body),
+      await permisosDe(peticion),
     ),
   }))
 
 rutasUsuarios.delete('/:idUsuario', escribir, async (peticion, respuesta) => {
-  await darDeBajaUsuario(esquemaId.parse(peticion.params.idUsuario), peticion.usuario.idUsuario)
+  await darDeBajaUsuario(esquemaId.parse(peticion.params.idUsuario), peticion.usuario.idUsuario, await permisosDe(peticion))
   return respuesta.status(204).send()
 })

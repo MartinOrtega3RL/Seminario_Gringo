@@ -45,8 +45,8 @@ export const FormularioUsuario = ({ abierto, usuario, perfiles, alCerrar, alGuar
   const validar = () => {
     const fallos = {}
     if (datos.apellidoNombre.trim().length < 2) fallos.apellidoNombre = 'Cargá el nombre.'
-    if (!/^[a-zA-Z0-9._-]{3,50}$/.test(datos.nombreUsuario.trim())) {
-      fallos.nombreUsuario = 'Entre 3 y 50 caracteres, sin espacios ni acentos.'
+    if (!/^[\p{L}\p{N}._-]{3,50}$/u.test(datos.nombreUsuario.trim())) {
+      fallos.nombreUsuario = 'Entre 3 y 50 letras, números, puntos o guiones, sin espacios.'
     }
     if (!datos.idPerfil) fallos.idPerfil = 'Asigná un perfil.'
 

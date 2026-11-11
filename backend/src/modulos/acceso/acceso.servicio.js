@@ -3,7 +3,9 @@ import jwt from 'jsonwebtoken'
 import { entorno } from '../../config/entorno.js'
 import { Usuario, Perfil, Persona, Sesion, Permiso, Modulo } from '../../modelos/index.js'
 import { hashearToken } from '../../http/middlewares/autenticar.js'
+import { usuarioActual } from '../../http/contexto.js'
 import { NoAutenticado, DatosInvalidos } from '../../errores.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const RONDAS = 10
 
@@ -84,6 +86,15 @@ export const iniciarSesion = async ({ nombreUsuario, contrasena, direccionIp }) 
     direccionIp: direccionIp ?? null,
   })
 
+  await registrarEnBitacora({
+    entidad: 'usuario',
+    idRegistro: usuario.idUsuario,
+    accion: 'LOGIN',
+    idUsuario: usuario.idUsuario,
+    ip: direccionIp ?? null,
+    detalle: `Inicio de sesión de ${usuario.nombreUsuario}`,
+  })
+
   return { token, usuario: await presentarUsuario(usuario) }
 }
 
@@ -109,6 +120,13 @@ export const cerrarSesion = async (idSesion) => {
     { fechaCierre: new Date(), motivoCierre: 'LOGOUT' },
     { where: { idSesion, fechaCierre: null } },
   )
+
+  await registrarEnBitacora({
+    entidad: 'usuario',
+    idRegistro: usuarioActual()?.idUsuario ?? null,
+    accion: 'LOGOUT',
+    detalle: 'Cierre de sesión',
+  })
 }
 
 /** RF01.3 — el usuario cambia su propia contrasena. */
@@ -127,4 +145,11 @@ export const cambiarContrasenaPropia = async (idUsuario, { contrasenaActual, con
     { fechaCierre: new Date(), motivoCierre: 'REVOCADA' },
     { where: { idUsuario, fechaCierre: null } },
   )
+
+  await registrarEnBitacora({
+    entidad: 'usuario',
+    idRegistro: idUsuario,
+    accion: 'MODIFICACION',
+    detalle: 'cambio de contraseña',
+  })
 }

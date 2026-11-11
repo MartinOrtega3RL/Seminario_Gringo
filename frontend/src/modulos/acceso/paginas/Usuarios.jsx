@@ -98,6 +98,10 @@ export const Usuarios = () => {
           <Listado className={cargando ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
             {usuarios.map((fila) => {
               const esPropio = fila.idUsuario === propio.idUsuario
+              // El servidor solo lista los perfiles que quien mira puede asignar.
+              // Si el de la fila no esta, es un usuario de soporte: se ve, pero
+              // no se edita ni se da de baja desde aca.
+              const gestionable = escritura && perfiles.some((p) => p.idPerfil === fila.idPerfil)
 
               return (
                 <Fila
@@ -122,9 +126,9 @@ export const Usuarios = () => {
                       </Marca>
                     </span>
                   }
-                  alAbrir={escritura ? () => setEditando(fila) : undefined}
+                  alAbrir={gestionable ? () => setEditando(fila) : undefined}
                   acciones={
-                    escritura && (
+                    gestionable && (
                       <>
                         <AccionFila etiqueta="Editar" onClick={() => setEditando(fila)}>
                           <IconoEditar className="size-4" />
