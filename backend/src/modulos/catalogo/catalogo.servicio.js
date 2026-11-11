@@ -9,6 +9,7 @@ import {
   catalogoVisible, productoVisible, prepararBusqueda,
   formatearCodigoInterno, columnasDeLista, factorDePorcentaje,
 } from './catalogo.reglas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const log = registroDe('catalogo')
 
@@ -64,7 +65,7 @@ const armarFiltro = ({ texto, idCategoria, idMarca, soloBajoMinimo }) => {
 }
 
 /** RF06.4 / RF06.5 — listado paginado. Nunca devuelve el conjunto completo. */
-export const listarProductos = async ({ texto, idCategoria, idMarca, soloBajoMinimo, limit, offset }, perfil) => {
+export const listarProductos = async ({ texto, idCategoria, idMarca, soloBajoMinimo, limit, offset }, permisos) => {
   const busqueda = prepararBusqueda(texto)
 
   const resultado = await Producto.findAndCountAll({
@@ -78,17 +79,17 @@ export const listarProductos = async ({ texto, idCategoria, idMarca, soloBajoMin
     subQuery: false,
   })
 
-  return { count: resultado.count, rows: catalogoVisible(resultado.rows, perfil) }
+  return { count: resultado.count, rows: catalogoVisible(resultado.rows, permisos) }
 }
 
-export const buscarProducto = async (idProducto, perfil) => {
+export const buscarProducto = async (idProducto, permisos) => {
   const producto = await Producto.findOne({
     where: { idProducto, activo: true },
     include: RELACIONES,
   })
   if (!producto) throw new NoEncontrado('El producto')
 
-  return productoVisible(producto, perfil)
+  return productoVisible(producto, permisos)
 }
 
 const verificarClasificaciones = async ({ idCategoria, idMarca }, transaction) => {
@@ -112,7 +113,7 @@ const verificarClasificaciones = async ({ idCategoria, idMarca }, transaction) =
  * como un movimiento de INGRESO, para que el saldo siga siendo igual a la suma
  * de los movimientos y quede constancia de quien las cargo.
  */
-export const registrarProducto = async (datos, idUsuario, perfil) => {
+export const registrarProducto = async (datos, idUsuario, permisos) => {
   const prefijo = await leerParametro('PREFIJO_CODIGO_INTERNO', 'EGC')
 
   const idProducto = await sequelize.transaction(async (transaction) => {
@@ -159,11 +160,25 @@ export const registrarProducto = async (datos, idUsuario, perfil) => {
       await producto.setProveedores(datos.proveedores, { transaction })
     }
 
+    await registrarEnBitacora({
+      entidad: 'producto',
+      idRegistro: producto.idProducto,
+      accion: 'ALTA',
+      despues: {
+        codigoInterno: formatearCodigoInterno(producto.idProducto, prefijo),
+        denominacion: datos.denominacion,
+        precioCosto: datos.precioCosto ?? 0,
+        precioMinorista: datos.precioMinorista,
+        precioMayorista: datos.precioMayorista,
+        stockMinimo: datos.stockMinimo ?? 0,
+      },
+    }, transaction)
+
     return producto.idProducto
   })
 
   log.info({ idProducto, usuario: idUsuario }, 'producto dado de alta')
-  return buscarProducto(idProducto, perfil)
+  return buscarProducto(idProducto, permisos)
 }
 
 /**
@@ -173,11 +188,22 @@ export const registrarProducto = async (datos, idUsuario, perfil) => {
  * que dejan movimiento. Y el costo solo se escribe si vino en el cuerpo: un
  * perfil que no puede verlo tampoco lo manda, y ausente significa conservar.
  */
-export const modificarProducto = async (idProducto, datos, perfil) => {
+export const modificarProducto = async (idProducto, datos, permisos) => {
   const producto = await Producto.findOne({ where: { idProducto, activo: true } })
   if (!producto) throw new NoEncontrado('El producto')
 
   await verificarClasificaciones(datos)
+
+  const antes = {
+    idCategoria: producto.idCategoria,
+    idMarca: producto.idMarca,
+    denominacion: producto.denominacion,
+    descripcion: producto.descripcion ?? null,
+    precioCosto: Number(producto.precioCosto),
+    precioMinorista: Number(producto.precioMinorista),
+    precioMayorista: Number(producto.precioMayorista),
+    stockMinimo: producto.stockMinimo,
+  }
 
   const cambios = {
     idCategoria: datos.idCategoria,
@@ -203,8 +229,21 @@ export const modificarProducto = async (idProducto, datos, perfil) => {
     await producto.setProveedores(datos.proveedores)
   }
 
+  await registrarEnBitacora({
+    entidad: 'producto',
+    idRegistro: idProducto,
+    accion: 'MODIFICACION',
+    antes,
+    despues: {
+      ...cambios,
+      precioCosto: cambios.precioCosto !== undefined ? Number(cambios.precioCosto) : antes.precioCosto,
+      precioMinorista: Number(cambios.precioMinorista),
+      precioMayorista: Number(cambios.precioMayorista),
+    },
+  })
+
   log.info({ idProducto }, 'producto modificado')
-  return buscarProducto(idProducto, perfil)
+  return buscarProducto(idProducto, permisos)
 }
 
 /** RF06.6 — imagen del producto. La ruta se guarda; el archivo vive en disco. */
@@ -227,6 +266,13 @@ export const darDeBajaProducto = async (idProducto) => {
   if (!producto) throw new NoEncontrado('El producto')
 
   await producto.update({ activo: false })
+  await registrarEnBitacora({
+    entidad: 'producto',
+    idRegistro: idProducto,
+    accion: 'BAJA',
+    antes: { activo: true, denominacion: producto.denominacion },
+    despues: { activo: false },
+  })
   log.info({ idProducto, denominacion: producto.denominacion }, 'producto dado de baja')
 }
 
@@ -260,6 +306,12 @@ export const actualizarPreciosMasivo = async ({ alcance, idAlcance, lista, porce
   )
 
   const afectados = resultado?.[0]?.affectedRows ?? 0
+  await registrarEnBitacora({
+    entidad: 'producto',
+    idRegistro: null,
+    accion: 'MODIFICACION',
+    detalle: `${alcance} #${idAlcance}, lista ${lista}, ${porcentaje > 0 ? '+' : ''}${porcentaje}% (${afectados} afectados)`,
+  })
   log.info({ alcance, idAlcance, lista, porcentaje, afectados }, 'precios actualizados en masa')
 
   return { afectados }

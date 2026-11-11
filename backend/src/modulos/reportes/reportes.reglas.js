@@ -3,7 +3,7 @@
 // visibilidad se prueban sin levantar base de datos.
 
 import { puedeVerCosto } from '../catalogo/catalogo.reglas.js'
-import { aCentavos, aPesos } from '../ventas/ventas.reglas.js'
+import { aCentavos, aPesos, MODALIDADES_PAGO } from '../ventas/ventas.reglas.js'
 import { fechaIso } from '../servicio/servicio.reglas.js'
 
 /** Rango predeterminado: del primer dia del mes en curso hasta hoy (hora local). */
@@ -13,14 +13,6 @@ export const rangoMesEnCurso = (hoy = new Date()) => ({
 })
 
 /** Verifica coherencia del periodo sin consultar la base. */
-/**
- * Instante -> texto UTC para una consulta SQL cruda. La sesion de MySQL esta en
- * UTC, pero `sequelize.query` escribe un Date de las replacements en hora
- * local: el limite de "el dia 1" (03:00 UTC) llegaba como "00:00" y corria el
- * periodo tres horas hacia atras. Los modelos convierten solos; aca no.
- */
-export const instanteUtc = (fecha) => fecha.toISOString().slice(0, 19).replace('T', ' ')
-
 export const rangoValido = ({ desde, hasta }) => {
   if (!desde || !hasta) return { valido: false, motivo: 'Tenés que indicar las dos fechas del período.' }
   if (desde > hasta) return { valido: false, motivo: 'La fecha "desde" no puede ser posterior a "hasta".' }
@@ -31,7 +23,13 @@ export const rangoValido = ({ desde, hasta }) => {
  * RF26.1 y RF26.2 — arma la respuesta del reporte comercial a partir de las
  * agregaciones devueltas por MySQL.
  */
-export const resumirVentasPeriodo = ({ totalesPorEstado = [], porDia = [], porMedioPago = [] }) => {
+export const resumirVentasPeriodo = ({
+  totalesPorEstado = [],
+  porDia = [],
+  porModalidad = [],
+  pagosAlVender = [],
+  cuotasCobradas = [],
+}) => {
   const confirmada = totalesPorEstado.find((fila) => fila.estado === 'CONFIRMADA')
   const anulada = totalesPorEstado.find((fila) => fila.estado === 'ANULADA')
 
@@ -41,6 +39,36 @@ export const resumirVentasPeriodo = ({ totalesPorEstado = [], porDia = [], porMe
   const ticketPromedio = operaciones > 0
     ? Number(aPesos(Math.round(totalCentavos / operaciones)))
     : 0
+
+  // RF26.2 — lo que entro por cada medio: lo cobrado al vender mas las cuotas
+  // cobradas en el periodo. Las dos consultas traen idMedioPago, medioPago e importe.
+  const mediosMap = new Map()
+  const acumular = (filas, campo) => {
+    for (const fila of filas) {
+      const id = Number(fila.idMedioPago)
+      if (!mediosMap.has(id)) {
+        mediosMap.set(id, { idMedioPago: id, medioPago: String(fila.medioPago), alVenderCentavos: 0, cuotasCentavos: 0 })
+      }
+      mediosMap.get(id)[campo] += aCentavos(fila.importe)
+    }
+  }
+  acumular(pagosAlVender, 'alVenderCentavos')
+  acumular(cuotasCobradas, 'cuotasCentavos')
+
+  const ingresosPorMedioPago = Array.from(mediosMap.values())
+    .map((item) => {
+      const alVender = Number(aPesos(item.alVenderCentavos))
+      const cuotas = Number(aPesos(item.cuotasCentavos))
+      const total = Number(aPesos(item.alVenderCentavos + item.cuotasCentavos))
+      return {
+        idMedioPago: item.idMedioPago,
+        medioPago: item.medioPago,
+        alVender,
+        cuotasCobradas: cuotas,
+        total,
+      }
+    })
+    .sort((a, b) => b.total - a.total || a.medioPago.localeCompare(b.medioPago))
 
   return {
     operaciones,
@@ -55,22 +83,23 @@ export const resumirVentasPeriodo = ({ totalesPorEstado = [], porDia = [], porMe
       operaciones: Number(fila.operaciones ?? 0),
       importe: Number(aPesos(aCentavos(fila.importe ?? 0))),
     })),
-    porMedioPago: porMedioPago.map((fila) => ({
-      idMedioPago: fila.idMedioPago != null ? Number(fila.idMedioPago) : null,
-      medioPago: String(fila.medioPago ?? 'Sin medio'),
+    porModalidad: porModalidad.map((fila) => ({
+      modalidadPago: String(fila.modalidadPago),
+      nombre: MODALIDADES_PAGO[fila.modalidadPago]?.nombre ?? String(fila.modalidadPago),
       operaciones: Number(fila.operaciones ?? 0),
       importe: Number(aPesos(aCentavos(fila.importe ?? 0))),
     })),
+    ingresosPorMedioPago,
   }
 }
 
 /**
  * RF27.2 y RF04.2 — valorizacion del inventario por categoria con fila de total.
  * Reusa `puedeVerCosto` de catalogo.reglas.js para ocultar `valorCosto` a los
- * perfiles sin acceso a precios de costo.
+ * usuarios sin lectura en REPORTES.
  */
-export const valorizacionVisible = (filas = [], perfil) => {
-  const veCostos = puedeVerCosto(perfil)
+export const valorizacionVisible = (filas = [], permisos) => {
+  const veCostos = puedeVerCosto(permisos)
 
   let articulosTotal = 0
   let unidadesTotal = 0

@@ -16,7 +16,7 @@ const Tarjeta = ({ rotulo, valor, detalle, destacado = false }) => (
   </div>
 )
 
-// RF26.1 y RF26.2 — actividad comercial y desglose por medio de pago.
+// RF26.1 y RF26.2 — actividad comercial, ventas por modalidad e ingresos por medio de pago.
 export const ReporteComercial = () => {
   const { desde, hasta } = useOutletContext()
   const [datos, setDatos] = useState(null)
@@ -57,67 +57,115 @@ export const ReporteComercial = () => {
         />
       </section>
 
-      {datos.operaciones === 0 ? (
+      {datos.operaciones === 0 && (datos.ingresosPorMedioPago ?? []).length === 0 ? (
         <Vacio
-          titulo="Sin ventas confirmadas en el período"
+          titulo="Sin actividad comercial en el período"
           detalle="Probá ampliando el rango de fechas arriba."
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
+          {/* 4.1 Ventas por modalidad (lo vendido) */}
           <section className="bloque-reporte border-2 border-black bg-azul-hondo p-5">
             <h3 className="font-[family-name:var(--font-cartel)] text-lg uppercase tracking-tight">
-              Por medio de pago
+              Ventas por modalidad
             </h3>
-            <table className="mt-4 w-full text-sm">
-              <thead>
-                <tr className="texto-suave border-b-2 border-crema/20 text-[10px] font-bold uppercase tracking-[0.16em] text-crema/60">
-                  <th className="py-2 text-left">Medio</th>
-                  <th className="py-2 text-right">Operaciones</th>
-                  <th className="py-2 text-right">Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datos.porMedioPago.map((fila) => (
-                  <tr key={fila.medioPago} className="border-b border-crema/10 last:border-b-0">
-                    <td className="py-2.5 font-semibold">{fila.medioPago}</td>
-                    <td className="numeral py-2.5 text-right">{fila.operaciones}</td>
-                    <td className="valor-destacado numeral py-2.5 text-right font-semibold text-ambar">
-                      ${pesos(fila.importe)}
-                    </td>
+            {(datos.porModalidad ?? []).length === 0 ? (
+              <p className="mt-3 text-xs text-crema/60">
+                No se registraron ventas en el período seleccionado.
+              </p>
+            ) : (
+              <table className="mt-4 w-full text-sm">
+                <thead>
+                  <tr className="texto-suave border-b-2 border-crema/20 text-[10px] font-bold uppercase tracking-[0.16em] text-crema/60">
+                    <th className="py-2 text-left">Modalidad</th>
+                    <th className="py-2 text-right">Operaciones</th>
+                    <th className="py-2 text-right">Importe</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {datos.porModalidad.map((fila) => (
+                    <tr key={fila.modalidadPago} className="border-b border-crema/10 last:border-b-0">
+                      <td className="py-2.5 font-semibold">{fila.nombre}</td>
+                      <td className="numeral py-2.5 text-right">{fila.operaciones}</td>
+                      <td className="valor-destacado numeral py-2.5 text-right font-semibold text-ambar">
+                        ${pesos(fila.importe)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </section>
 
+          {/* Totales por día */}
           <section className="bloque-reporte border-2 border-black bg-azul-hondo p-5">
             <h3 className="font-[family-name:var(--font-cartel)] text-lg uppercase tracking-tight">
               Totales por día
             </h3>
-            <table className="mt-4 w-full text-sm">
-              <thead>
-                <tr className="texto-suave border-b-2 border-crema/20 text-[10px] font-bold uppercase tracking-[0.16em] text-crema/60">
-                  <th className="py-2 text-left">Fecha</th>
-                  <th className="py-2 text-right">Operaciones</th>
-                  <th className="py-2 text-right">Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datos.porDia.map((dia) => (
-                  <tr key={dia.fecha} className="border-b border-crema/10 last:border-b-0">
-                    <td className="numeral py-2.5 font-semibold">{soloFecha(dia.fecha)}</td>
-                    <td className="numeral py-2.5 text-right">{dia.operaciones}</td>
-                    <td className="valor-destacado numeral py-2.5 text-right font-semibold text-ambar">
-                      ${pesos(dia.importe)}
-                    </td>
+            {(datos.porDia ?? []).length === 0 ? (
+              <p className="mt-3 text-xs text-crema/60">
+                No se registraron ventas en el período seleccionado.
+              </p>
+            ) : (
+              <table className="mt-4 w-full text-sm">
+                <thead>
+                  <tr className="texto-suave border-b-2 border-crema/20 text-[10px] font-bold uppercase tracking-[0.16em] text-crema/60">
+                    <th className="py-2 text-left">Fecha</th>
+                    <th className="py-2 text-right">Operaciones</th>
+                    <th className="py-2 text-right">Importe</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {datos.porDia.map((dia) => (
+                    <tr key={dia.fecha} className="border-b border-crema/10 last:border-b-0">
+                      <td className="numeral py-2.5 font-semibold">{soloFecha(dia.fecha)}</td>
+                      <td className="numeral py-2.5 text-right">{dia.operaciones}</td>
+                      <td className="valor-destacado numeral py-2.5 text-right font-semibold text-ambar">
+                        ${pesos(dia.importe)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          {/* 4.2 Ingresos por medio de pago (la plata que entró) */}
+          <section className="bloque-reporte border-2 border-black bg-azul-hondo p-5 lg:col-span-2">
+            <h3 className="font-[family-name:var(--font-cartel)] text-lg uppercase tracking-tight">
+              Ingresos por medio de pago
+            </h3>
+            {(datos.ingresosPorMedioPago ?? []).length === 0 ? (
+              <p className="mt-3 text-xs text-crema/60">
+                No se registraron ingresos en el período seleccionado.
+              </p>
+            ) : (
+              <table className="mt-4 w-full text-sm">
+                <thead>
+                  <tr className="texto-suave border-b-2 border-crema/20 text-[10px] font-bold uppercase tracking-[0.16em] text-crema/60">
+                    <th className="py-2 text-left">Medio de pago</th>
+                    <th className="py-2 text-right">Al vender</th>
+                    <th className="py-2 text-right">Cuotas cobradas</th>
+                    <th className="py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.ingresosPorMedioPago.map((fila) => (
+                    <tr key={fila.idMedioPago ?? fila.medioPago} className="border-b border-crema/10 last:border-b-0">
+                      <td className="py-2.5 font-semibold">{fila.medioPago}</td>
+                      <td className="numeral py-2.5 text-right">${pesos(fila.alVender)}</td>
+                      <td className="numeral py-2.5 text-right">${pesos(fila.cuotasCobradas)}</td>
+                      <td className="valor-destacado numeral py-2.5 text-right font-bold text-ambar">
+                        ${pesos(fila.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </section>
         </div>
       )}
     </div>
   )
 }
-

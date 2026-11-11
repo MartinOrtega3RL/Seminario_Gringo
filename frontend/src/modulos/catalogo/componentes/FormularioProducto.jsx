@@ -46,13 +46,13 @@ const desdeProducto = (producto) => ({
 })
 
 export const FormularioProducto = ({ abierto, producto, categorias, marcas, alCerrar, alGuardar }) => {
-  const { usuario } = useSesion()
+  const { puedeLeer } = useSesion()
 
   // RF04.2 — a quien no puede ver el costo, el servidor no se lo manda. Si el
   // formulario mostrara el campo vacío y lo enviara igual, guardar borraría el
   // costo del producto. Se oculta Y se omite del envío: ocultarlo sin omitirlo
   // sería la misma pérdida de datos, solo que invisible.
-  const conCosto = puedeVerCosto(usuario.perfil)
+  const conCosto = puedeVerCosto(puedeLeer)
 
   const [datos, setDatos] = useState(VACIO)
   const [errores, setErrores] = useState({})

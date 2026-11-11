@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
+import { permisosDelUsuario } from '../../http/middlewares/autorizar.js'
 import { rangoMesEnCurso } from './reportes.reglas.js'
 import {
   reporteVentas,
@@ -34,7 +35,8 @@ export const stockBajoMinimo = async (peticion, respuesta) => {
 }
 
 export const valorizacion = async (peticion, respuesta) => {
-  const datos = await reporteValorizacion(peticion.usuario.perfil)
+  const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
+  const datos = await reporteValorizacion(permisos)
   return respuesta.json({ datos })
 }
 

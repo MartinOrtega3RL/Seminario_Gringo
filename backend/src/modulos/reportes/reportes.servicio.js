@@ -1,9 +1,8 @@
 import { sequelize } from '../../config/base-de-datos.js'
 import { DatosInvalidos } from '../../errores.js'
-import { inicioDeDia, finDeDia } from '../servicio/servicio.reglas.js'
+import { inicioDeDia, finDeDia, instanteUtc } from '../../http/fechas.js'
 import {
   rangoValido,
-  instanteUtc,
   resumirVentasPeriodo,
   valorizacionVisible,
   resumirServicioPeriodo,
@@ -50,10 +49,21 @@ export const reporteVentas = async ({ desde, hasta }) => {
      ORDER BY fecha ASC
   `, { replacements })
 
-  const [porMedioPago] = await sequelize.query(`
+  const [porModalidad] = await sequelize.query(`
+    SELECT modalidad_pago AS modalidadPago,
+           COUNT(*) AS operaciones,
+           COALESCE(SUM(monto_total + recargo_financiacion), 0) AS importe
+      FROM venta
+     WHERE estado = 'CONFIRMADA'
+       AND fecha_hora >= :desde
+       AND fecha_hora <= :hasta
+     GROUP BY modalidad_pago
+     ORDER BY importe DESC, modalidad_pago ASC
+  `, { replacements })
+
+  const [pagosAlVender] = await sequelize.query(`
     SELECT mp.id_medio_pago AS idMedioPago,
            mp.nombre AS medioPago,
-           COUNT(DISTINCT v.id_venta) AS operaciones,
            COALESCE(SUM(pv.importe), 0) AS importe
       FROM venta v
       JOIN pago_venta pv ON pv.id_venta = v.id_venta
@@ -62,12 +72,25 @@ export const reporteVentas = async ({ desde, hasta }) => {
        AND v.fecha_hora >= :desde
        AND v.fecha_hora <= :hasta
      GROUP BY mp.id_medio_pago, mp.nombre
-     ORDER BY importe DESC, mp.nombre ASC
+  `, { replacements })
+
+  const [cuotasCobradas] = await sequelize.query(`
+    SELECT mp.id_medio_pago AS idMedioPago,
+           mp.nombre AS medioPago,
+           COALESCE(SUM(c.importe), 0) AS importe
+      FROM cuota c
+      JOIN medio_pago mp ON mp.id_medio_pago = c.id_medio_pago
+      JOIN venta v ON v.id_venta = c.id_venta
+     WHERE v.estado = 'CONFIRMADA'
+       AND c.fecha_cobro IS NOT NULL
+       AND c.fecha_cobro >= :desde
+       AND c.fecha_cobro <= :hasta
+     GROUP BY mp.id_medio_pago, mp.nombre
   `, { replacements })
 
   return {
     periodo: { desde, hasta },
-    ...resumirVentasPeriodo({ totalesPorEstado, porDia, porMedioPago }),
+    ...resumirVentasPeriodo({ totalesPorEstado, porDia, porModalidad, pagosAlVender, cuotasCobradas }),
   }
 }
 
@@ -112,9 +135,9 @@ export const reporteStockBajoMinimo = async ({ limit, offset }) => {
 
 /**
  * RF27.2 — valorizacion del inventario por categoria desde
- * v_valorizacion_inventario, respetando RF04.2 (costos segun perfil).
+ * v_valorizacion_inventario, respetando RF04.2 (costos segun permisos).
  */
-export const reporteValorizacion = async (perfil) => {
+export const reporteValorizacion = async (permisos) => {
   const [filas] = await sequelize.query(`
     SELECT categoria,
            articulos,
@@ -125,7 +148,7 @@ export const reporteValorizacion = async (perfil) => {
      ORDER BY valor_venta DESC, categoria ASC
   `)
 
-  return valorizacionVisible(filas, perfil)
+  return valorizacionVisible(filas, permisos)
 }
 
 /**

@@ -72,11 +72,12 @@ de los tokens:
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
 
-Crear el primer administrador — la contraseña se pide por consola, nunca se
-pasa como argumento:
+Crear el primer usuario, con perfil Soporte — la contraseña se pide por consola,
+nunca se pasa como argumento. Desde el sistema, Soporte da de alta después al
+Administrador del comercio:
 
 ```bash
-npm run crear-administrador
+npm run crear-soporte
 npm run dev
 ```
 
@@ -121,7 +122,7 @@ docs/           Arquitectura, plan de diseño, deuda técnica y pruebas
 | Desarrollo | `npm run dev` | `npm run dev` |
 | Pruebas | `npm test` | `npm test` |
 | Construcción | — | `npm run build` |
-| Crear administrador | `npm run crear-administrador` | — |
+| Crear usuario de soporte | `npm run crear-soporte` | — |
 | Datos de muestra | `npm run cargar-muestra` | — |
 
 Los datos de muestra se quitan con `npm run cargar-muestra -- --borrar`.

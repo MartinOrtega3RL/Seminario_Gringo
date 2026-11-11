@@ -153,3 +153,33 @@ export const IconoPedidos = (props) => (
     <path d="M6 4h12v16H6zM9 9h6M9 13h6M9 17h4" />
   </Trazo>
 )
+
+export const IconoBitacora = (props) => (
+  <Trazo {...props}>
+    <path d="M5 4h14v16H5zM9 4v16M12 9h4M12 13h4" />
+  </Trazo>
+)
+
+export const IconoCandado = (props) => (
+  <Trazo {...props}>
+    <path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3" />
+  </Trazo>
+)
+
+export const IconoTilde = (props) => (
+  <Trazo {...props}>
+    <path d="M5 12.5l4.5 4.5L19 7" />
+  </Trazo>
+)
+
+export const IconoFlecha = (props) => (
+  <Trazo {...props}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Trazo>
+)
+
+export const IconoCerrar = (props) => (
+  <Trazo {...props}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Trazo>
+)

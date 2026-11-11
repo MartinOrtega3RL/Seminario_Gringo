@@ -119,6 +119,19 @@
     border: 2px solid #000;
     border-radius: var(--radius-filo);
   }
+
+  /* El aviso de "guardado" entra subiendo desde abajo. Es el unico movimiento
+     de la ficha de servicio: confirma que el clic tomo. */
+  .aviso-guardado {
+    animation: aviso-entra 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes aviso-entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 }
 
 /* Reduccion de movimiento: el latido del cursor y las transiciones se apagan. */

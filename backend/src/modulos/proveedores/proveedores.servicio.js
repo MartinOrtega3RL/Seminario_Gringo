@@ -4,6 +4,7 @@ import { Proveedor, Persona, Producto, Categoria, Marca } from '../../modelos/in
 import { NoEncontrado, DatosInvalidos } from '../../errores.js'
 import { registroDe } from '../../registro.js'
 import { normalizarContacto, documentoCompleto } from '../clientes/clientes.reglas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const log = registroDe('proveedores')
 
@@ -119,6 +120,18 @@ export const registrarProveedor = async (datos) => {
       observaciones: datos.observaciones ?? null,
     }, { transaction })
 
+    await registrarEnBitacora({
+      entidad: 'proveedor',
+      idRegistro: proveedor.idProveedor,
+      accion: 'ALTA',
+      despues: {
+        apellidoNombre: datos.apellidoNombre,
+        numeroDocumento: datos.numeroDocumento ?? null,
+        telefonoWhatsapp: normalizarContacto(datos.telefonoWhatsapp),
+        sitioWeb: datos.sitioWeb ?? null,
+      },
+    }, transaction)
+
     return proveedor.idProveedor
   })
 
@@ -131,12 +144,41 @@ export const modificarProveedor = async (idProveedor, datos) => {
   const proveedor = await buscarProveedor(idProveedor)
   await verificarDocumento(datos, proveedor.idPersona)
 
+  const antes = {
+    apellidoNombre: proveedor.persona.apellidoNombre,
+    tipoDocumento: proveedor.persona.tipoDocumento,
+    numeroDocumento: proveedor.persona.numeroDocumento,
+    telefonoWhatsapp: proveedor.persona.telefonoWhatsapp,
+    correo: proveedor.persona.correo,
+    domicilio: proveedor.persona.domicilio,
+    sitioWeb: proveedor.sitioWeb,
+    observaciones: proveedor.observaciones,
+  }
+  const despuesPersona = datosDePersona(datos)
+
   await sequelize.transaction(async (transaction) => {
-    await proveedor.persona.update(datosDePersona(datos), { transaction })
+    await proveedor.persona.update(despuesPersona, { transaction })
     await proveedor.update({
       sitioWeb: datos.sitioWeb ?? null,
       observaciones: datos.observaciones ?? null,
     }, { transaction })
+
+    await registrarEnBitacora({
+      entidad: 'proveedor',
+      idRegistro: idProveedor,
+      accion: 'MODIFICACION',
+      antes,
+      despues: {
+        apellidoNombre: despuesPersona.apellidoNombre,
+        tipoDocumento: despuesPersona.tipoDocumento,
+        numeroDocumento: despuesPersona.numeroDocumento,
+        telefonoWhatsapp: despuesPersona.telefonoWhatsapp,
+        correo: despuesPersona.correo,
+        domicilio: despuesPersona.domicilio,
+        sitioWeb: datos.sitioWeb ?? null,
+        observaciones: datos.observaciones ?? null,
+      },
+    }, transaction)
   })
 
   log.info({ idProveedor }, 'proveedor modificado')
@@ -150,6 +192,14 @@ export const modificarProveedor = async (idProveedor, datos) => {
 export const darDeBajaProveedor = async (idProveedor) => {
   const proveedor = await buscarProveedor(idProveedor)
   await proveedor.update({ activo: false })
+
+  await registrarEnBitacora({
+    entidad: 'proveedor',
+    idRegistro: idProveedor,
+    accion: 'BAJA',
+    antes: { activo: true, apellidoNombre: proveedor.persona.apellidoNombre },
+    despues: { activo: false },
+  })
 
   log.info({ idProveedor, nombre: proveedor.persona.apellidoNombre }, 'proveedor dado de baja')
 }

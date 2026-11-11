@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { autenticar } from '../../http/middlewares/autenticar.js'
-import { autorizar } from '../../http/middlewares/autorizar.js'
+import { autorizar, permisosDelUsuario } from '../../http/middlewares/autorizar.js'
 import { recibirImagen } from './imagen.js'
 import { buscarProducto } from './catalogo.servicio.js'
 import {
@@ -32,7 +32,7 @@ export const crearRutasCatalogo = ({ generadorEtiqueta }) => {
   // RF09.2 — el pliego de etiquetas. El precio que lleva impreso es el
   // minorista; el costo no aparece nunca en un papel que va a la gondola.
   rutas.get('/:idProducto/etiqueta', leer, async (peticion, respuesta) => {
-    const producto = await buscarProducto(esquemaId.parse(peticion.params.idProducto), peticion.usuario.perfil)
+    const producto = await buscarProducto(esquemaId.parse(peticion.params.idProducto), await permisosDelUsuario(peticion.usuario.idPerfil))
     const cantidad = z.coerce.number().int().min(1).max(60).default(12).parse(peticion.query.cantidad ?? 12)
 
     const emitida = await generadorEtiqueta.generar(producto, cantidad)

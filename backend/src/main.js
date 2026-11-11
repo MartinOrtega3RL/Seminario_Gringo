@@ -8,6 +8,7 @@ import './modelos/index.js'
 
 import { registrarPeticiones } from './http/middlewares/registrar-peticiones.js'
 import { manejarErrores, rutaNoEncontrada } from './http/middlewares/manejar-errores.js'
+import { contextoPeticion } from './http/contexto.js'
 
 import { rutasAcceso } from './modulos/acceso/acceso.rutas.js'
 import { rutasUsuarios } from './modulos/acceso/usuarios.rutas.js'
@@ -16,12 +17,16 @@ import { rutasModelos } from './modulos/catalogo/modelos.rutas.js'
 import { CARPETA_IMAGENES, RUTA_PUBLICA } from './modulos/catalogo/imagen.js'
 import { rutasCategorias, rutasMarcas } from './modulos/clasificaciones/clasificaciones.rutas.js'
 import { rutasExistencias } from './modulos/existencias/existencias.rutas.js'
+import { rutasRecepciones } from './modulos/recepciones/recepciones.rutas.js'
 import { rutasClientes } from './modulos/clientes/clientes.rutas.js'
 import { rutasProveedores } from './modulos/proveedores/proveedores.rutas.js'
 import { crearRutasVentas } from './modulos/ventas/ventas.rutas.js'
+import { rutasCuotas } from './modulos/ventas/cuotas.rutas.js'
 import { crearRutasServicio } from './modulos/servicio/servicio.rutas.js'
 import { rutasReportes } from './modulos/reportes/reportes.rutas.js'
 import { rutasPedidos } from './modulos/pedidos/pedidos.rutas.js'
+import { rutasBitacora } from './modulos/bitacora/bitacora.rutas.js'
+import { rutasPerfiles } from './modulos/permisos/permisos.rutas.js'
 
 import { verificarGenerador } from './modulos/ventas/comprobante/comprobante.puerto.js'
 import { generadorHtml } from './modulos/ventas/comprobante/comprobante.html.js'
@@ -43,6 +48,7 @@ const armarAplicacion = () => {
   aplicacion.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
   aplicacion.use(cors({ origin: entorno.ORIGEN_FRONTEND, credentials: true }))
   aplicacion.use(express.json({ limit: '1mb' }))
+  aplicacion.use(contextoPeticion)
 
   // Las imagenes de producto se sirven como archivos estaticos (RF06.6).
   aplicacion.use(RUTA_PUBLICA, express.static(CARPETA_IMAGENES, { maxAge: '7d' }))
@@ -63,12 +69,16 @@ const armarAplicacion = () => {
   aplicacion.use('/api/categorias', rutasCategorias)
   aplicacion.use('/api/marcas', rutasMarcas)
   aplicacion.use('/api/existencias', rutasExistencias)
+  aplicacion.use('/api/recepciones', rutasRecepciones)
   aplicacion.use('/api/clientes', rutasClientes)
   aplicacion.use('/api/proveedores', rutasProveedores)
   aplicacion.use('/api/ventas', crearRutasVentas({ generadorComprobante }))
+  aplicacion.use('/api/cuotas', rutasCuotas)
   aplicacion.use('/api/servicio', crearRutasServicio())
   aplicacion.use('/api/reportes', rutasReportes)
   aplicacion.use('/api/pedidos', rutasPedidos)
+  aplicacion.use('/api/bitacora', rutasBitacora)
+  aplicacion.use('/api/perfiles', rutasPerfiles)
 
   aplicacion.use(rutaNoEncontrada)
   aplicacion.use(manejarErrores)

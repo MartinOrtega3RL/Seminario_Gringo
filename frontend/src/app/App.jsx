@@ -5,10 +5,16 @@ import { SeccionProductos } from './SeccionProductos.jsx'
 import { SeccionClientes } from './SeccionClientes.jsx'
 import { Ingreso } from '../modulos/acceso/paginas/Ingreso.jsx'
 import { Usuarios } from '../modulos/acceso/paginas/Usuarios.jsx'
+import { Perfiles } from '../modulos/permisos/paginas/Perfiles.jsx'
+import { PestanaPerfiles } from '../modulos/permisos/componentes/PestanaPerfiles.jsx'
+import { MatrizPermisos } from '../modulos/permisos/componentes/MatrizPermisos.jsx'
+import { Bitacora } from '../modulos/bitacora/paginas/Bitacora.jsx'
 import { MiCuenta } from '../modulos/acceso/paginas/MiCuenta.jsx'
 import { Catalogo } from '../modulos/catalogo/paginas/Catalogo.jsx'
 import { Clasificaciones } from '../modulos/catalogo/paginas/Clasificaciones.jsx'
 import { Existencias } from '../modulos/existencias/paginas/Existencias.jsx'
+import { Recepciones } from '../modulos/recepciones/paginas/Recepciones.jsx'
+import { ValidacionRecepcion } from '../modulos/recepciones/paginas/ValidacionRecepcion.jsx'
 import { Clientes } from '../modulos/clientes/paginas/Clientes.jsx'
 import { FichaCliente, InicioFichaCliente } from '../modulos/clientes/paginas/FichaCliente.jsx'
 import { HistorialComprasCliente } from '../modulos/clientes/componentes/HistorialComprasCliente.jsx'
@@ -17,6 +23,7 @@ import { Proveedores } from '../modulos/proveedores/paginas/Proveedores.jsx'
 import { PuntoDeVenta } from '../modulos/ventas/paginas/PuntoDeVenta.jsx'
 import { HistorialVentas } from '../modulos/ventas/paginas/HistorialVentas.jsx'
 import { Comprobante } from '../modulos/ventas/paginas/Comprobante.jsx'
+import { Cuotas } from '../modulos/ventas/paginas/Cuotas.jsx'
 import { Pedidos } from '../modulos/pedidos/paginas/Pedidos.jsx'
 import { Ordenes } from '../modulos/servicio/paginas/Ordenes.jsx'
 import { NuevaOrden } from '../modulos/servicio/paginas/NuevaOrden.jsx'
@@ -91,6 +98,7 @@ const Rutas = () => (
       <Route path="/venta" element={conPermiso('VENTAS', <PuntoDeVenta />)} />
       <Route path="/ventas" element={conPermiso('VENTAS', <HistorialVentas />)} />
       <Route path="/pedidos" element={conPermiso('VENTAS', <Pedidos />)} />
+      <Route path="/cuotas" element={conPermiso('VENTAS', <Cuotas />)} />
       <Route path="/venta/:idVenta/comprobante" element={conPermiso('VENTAS', <Comprobante />)} />
 
       {/* Servicio técnico: el listado, la recepción y la ficha de cada orden.
@@ -102,6 +110,8 @@ const Rutas = () => (
       {/* Una sola sección con tres vistas: el módulo 2 de la carpeta es uno. */}
       <Route path="/productos" element={conPermiso('CATALOGO_STOCK', <SeccionProductos />)}>
         <Route index element={<Catalogo />} />
+        <Route path="recepciones" element={<Recepciones />} />
+        <Route path="recepciones/:id" element={<ValidacionRecepcion />} />
         <Route path="movimientos" element={<Existencias />} />
         <Route path="clasificaciones" element={<Clasificaciones />} />
       </Route>
@@ -121,6 +131,11 @@ const Rutas = () => (
         <Route path="reparaciones" element={conPermiso('SERVICIO_TECNICO', <HistorialReparacionesCliente />)} />
       </Route>
       <Route path="/usuarios" element={conPermiso('ADMIN_SEGURIDAD', <Usuarios />)} />
+      <Route path="/perfiles" element={conPermiso('SOPORTE_SISTEMA', <Perfiles />)}>
+        <Route index element={<PestanaPerfiles />} />
+        <Route path="matriz" element={<MatrizPermisos />} />
+      </Route>
+      <Route path="/bitacora" element={conPermiso('SOPORTE_SISTEMA', <Bitacora />)} />
       <Route path="/reportes" element={conPermiso('REPORTES', <Reportes />)}>
         <Route index element={<ReporteComercial />} />
         <Route path="inventario" element={<ReporteInventario />} />

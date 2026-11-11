@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
+import { permisosDelUsuario } from '../../http/middlewares/autorizar.js'
 import { RUTA_PUBLICA } from './imagen.js'
 import { DatosInvalidos } from '../../errores.js'
 import {
@@ -48,32 +49,37 @@ const esquemaId = z.coerce.number().int().positive()
 export const listar = async (peticion, respuesta) => {
   const paginacion = leerPaginacion(peticion.query)
   const filtros = esquemaFiltros.parse(peticion.query)
+  const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
 
   const resultado = await listarProductos(
     { ...filtros, limit: paginacion.limit, offset: paginacion.offset },
-    peticion.usuario.perfil,
+    permisos,
   )
 
   return respuesta.json(responderPaginado(resultado, paginacion))
 }
 
-export const detalle = async (peticion, respuesta) =>
-  respuesta.json({ datos: await buscarProducto(esquemaId.parse(peticion.params.idProducto), peticion.usuario.perfil) })
+export const detalle = async (peticion, respuesta) => {
+  const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
+  return respuesta.json({ datos: await buscarProducto(esquemaId.parse(peticion.params.idProducto), permisos) })
+}
 
 export const registrar = async (peticion, respuesta) => {
   const datos = esquemaProducto.parse(peticion.body)
+  const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
 
   // El responsable de las existencias iniciales sale del token.
-  const producto = await registrarProducto(datos, peticion.usuario.idUsuario, peticion.usuario.perfil)
+  const producto = await registrarProducto(datos, peticion.usuario.idUsuario, permisos)
 
   return respuesta.status(201).json({ datos: producto })
 }
 
 export const modificar = async (peticion, respuesta) => {
+  const permisos = await permisosDelUsuario(peticion.usuario.idPerfil)
   const producto = await modificarProducto(
     esquemaId.parse(peticion.params.idProducto),
     esquemaProducto.parse(peticion.body),
-    peticion.usuario.perfil,
+    permisos,
   )
   return respuesta.json({ datos: producto })
 }

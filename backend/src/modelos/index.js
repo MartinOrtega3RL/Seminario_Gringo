@@ -6,12 +6,14 @@ import { Persona, Perfil, Modulo, Permiso, Usuario, Sesion } from './acceso.js'
 import { Categoria, Marca, Producto, ModeloDispositivo, ProductoModeloCompatible } from './catalogo.js'
 import { MovimientoStock } from './existencias.js'
 import { TipoCliente, Cliente, Proveedor, ProductoProveedor } from './clientes.js'
-import { MedioPago, Venta, DetalleVenta, PagoVenta } from './ventas.js'
+import { MedioPago, Venta, DetalleVenta, PagoVenta, Cuota } from './ventas.js'
 import { ParametroSistema } from './sistema.js'
 import {
   Dispositivo, EstadoOrden, OrdenServicio, OrdenEstadoHistorial, FotoOrden, RepuestoUtilizado, TareaRealizada,
 } from './servicio.js'
 import { PedidoPendiente } from './pedidos.js'
+import { Bitacora } from './bitacora.js'
+import { RecepcionMercaderia, OcrExtraccion, DetalleRecepcion } from './recepciones.js'
 
 // --- Acceso ------------------------------------------------------------------
 Usuario.belongsTo(Persona, { foreignKey: 'idPersona', as: 'persona' })
@@ -86,6 +88,11 @@ Venta.hasOne(PagoVenta, { foreignKey: 'idVenta', as: 'pago' })
 PagoVenta.belongsTo(Venta, { foreignKey: 'idVenta', as: 'venta' })
 PagoVenta.belongsTo(MedioPago, { foreignKey: 'idMedioPago', as: 'medioPago' })
 
+Venta.hasMany(Cuota, { foreignKey: 'idVenta', as: 'cuotas' })
+Cuota.belongsTo(Venta, { foreignKey: 'idVenta', as: 'venta' })
+Cuota.belongsTo(MedioPago, { foreignKey: 'idMedioPago', as: 'medioPago' })
+Cuota.belongsTo(Usuario, { foreignKey: 'idUsuarioCobro', as: 'cobradoPor' })
+
 Venta.hasMany(MovimientoStock, { foreignKey: 'idVenta', as: 'movimientos' })
 
 // --- Servicio tecnico (RF21 a RF25) -------------------------------------------
@@ -124,13 +131,31 @@ PedidoPendiente.belongsTo(Producto, { foreignKey: 'idProducto', as: 'producto' }
 PedidoPendiente.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
 Cliente.hasMany(PedidoPendiente, { foreignKey: 'idCliente', as: 'pedidos' })
 
+// --- Bitacora (RF05) ---------------------------------------------------------
+Bitacora.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
+Usuario.hasMany(Bitacora, { foreignKey: 'idUsuario', as: 'registrosBitacora' })
+
+// --- Recepcion de mercaderia (RF10) ------------------------------------------
+RecepcionMercaderia.belongsTo(Proveedor, { foreignKey: 'idProveedor', as: 'proveedor' })
+RecepcionMercaderia.belongsTo(Usuario, { foreignKey: 'idUsuario', as: 'usuario' })
+RecepcionMercaderia.hasMany(DetalleRecepcion, { foreignKey: 'idRecepcion', as: 'lineas' })
+RecepcionMercaderia.hasOne(OcrExtraccion, { foreignKey: 'idRecepcion', as: 'extraccion' })
+RecepcionMercaderia.hasMany(MovimientoStock, { foreignKey: 'idRecepcion', as: 'movimientos' })
+MovimientoStock.belongsTo(RecepcionMercaderia, { foreignKey: 'idRecepcion', as: 'recepcion' })
+
+OcrExtraccion.belongsTo(RecepcionMercaderia, { foreignKey: 'idRecepcion', as: 'recepcion' })
+DetalleRecepcion.belongsTo(RecepcionMercaderia, { foreignKey: 'idRecepcion', as: 'recepcion' })
+DetalleRecepcion.belongsTo(Producto, { foreignKey: 'idProducto', as: 'producto' })
+
 export {
   Persona, Perfil, Modulo, Permiso, Usuario, Sesion,
   Categoria, Marca, Producto, ModeloDispositivo, ProductoModeloCompatible,
   MovimientoStock,
   TipoCliente, Cliente, Proveedor, ProductoProveedor,
-  MedioPago, Venta, DetalleVenta, PagoVenta,
+  MedioPago, Venta, DetalleVenta, PagoVenta, Cuota,
   ParametroSistema,
   Dispositivo, EstadoOrden, OrdenServicio, OrdenEstadoHistorial, FotoOrden, RepuestoUtilizado, TareaRealizada,
   PedidoPendiente,
+  Bitacora,
+  RecepcionMercaderia, OcrExtraccion, DetalleRecepcion,
 }

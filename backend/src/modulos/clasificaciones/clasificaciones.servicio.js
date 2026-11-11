@@ -1,5 +1,6 @@
 import { Categoria, Marca, Producto } from '../../modelos/index.js'
 import { NoEncontrado, DatosInvalidos } from '../../errores.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 // RF07.1 y RF07.2 — categorias y marcas.
 //
@@ -32,7 +33,14 @@ export const crearServicio = (tipo) => {
       if (await Modelo.count({ where: { nombre } })) {
         throw new DatosInvalidos(`Ya existe "${nombre}".`)
       }
-      return Modelo.create({ nombre })
+      const creada = await Modelo.create({ nombre })
+      await registrarEnBitacora({
+        entidad: tipo,
+        idRegistro: creada[clave],
+        accion: 'ALTA',
+        despues: { nombre },
+      })
+      return creada
     },
 
     modificar: async (id, { nombre }) => {
@@ -40,7 +48,16 @@ export const crearServicio = (tipo) => {
       if (fila.nombre !== nombre && (await Modelo.count({ where: { nombre } }))) {
         throw new DatosInvalidos(`Ya existe "${nombre}".`)
       }
-      return fila.update({ nombre })
+      const antes = { nombre: fila.nombre }
+      const actualizada = await fila.update({ nombre })
+      await registrarEnBitacora({
+        entidad: tipo,
+        idRegistro: id,
+        accion: 'MODIFICACION',
+        antes,
+        despues: { nombre },
+      })
+      return actualizada
     },
 
     /**
@@ -59,6 +76,13 @@ export const crearServicio = (tipo) => {
       }
 
       await fila.update({ activo: false })
+      await registrarEnBitacora({
+        entidad: tipo,
+        idRegistro: id,
+        accion: 'BAJA',
+        antes: { activo: true, nombre: fila.nombre },
+        despues: { activo: false },
+      })
     },
   }
 }
