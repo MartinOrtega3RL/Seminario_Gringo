@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
 import { confirmarVenta, buscarVenta, listarMediosPago, listarVentas, anularVenta } from './ventas.servicio.js'
+import { MODALIDADES_PAGO, CUOTAS_MAXIMAS } from './ventas.reglas.js'
 
 const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha va como AAAA-MM-DD.')
 
@@ -23,13 +24,22 @@ const esquemaLinea = z.object({
 const esquemaVenta = z.object({
   idCliente: z.coerce.number().int().positive().nullish(),
   lineas: z.array(esquemaLinea).min(1, 'La venta necesita al menos un producto.'),
-  idMedioPago: z.coerce.number().int().positive(),
+  idMedioPago: z.coerce.number().int().positive().nullish(),
   referenciaPago: z.string().trim().max(60).nullish(),
   modalidadPago: z.enum(['CONTADO', 'FINANCIACION_PROPIA', 'TARJETA_CUOTAS', 'GO_CUOTAS']).default('CONTADO'),
-  cantidadCuotas: z.coerce.number().int().min(1).max(255).nullish(),
+  cantidadCuotas: z.coerce.number().int().min(1).max(CUOTAS_MAXIMAS).nullish(),
   recargoFinanciacion: z.coerce.number().min(0).default(0),
   modalidadEntrega: z.enum(['RETIRO_LOCAL', 'ENVIO_DOMICILIO']).default('RETIRO_LOCAL'),
   domicilioEntrega: z.string().trim().max(200).nullish(),
+}).superRefine((datos, ctx) => {
+  const modalidad = MODALIDADES_PAGO[datos.modalidadPago]
+  if (modalidad?.cobraAlVender && !datos.idMedioPago) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Tenés que seleccionar un medio de pago.',
+      path: ['idMedioPago'],
+    })
+  }
 })
 
 const esquemaId = z.coerce.number().int().positive()

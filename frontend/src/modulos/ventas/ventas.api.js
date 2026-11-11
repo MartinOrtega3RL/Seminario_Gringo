@@ -26,3 +26,10 @@ export const listarVentas = ({ desde, hasta, idCliente, estado, pagina = 1, tama
  * responsable y el motivo. No borra la venta: la marca como anulada.
  */
 export const anularVenta = (idVenta, motivo) => api.enviar(`/ventas/${idVenta}/anular`, { motivo })
+
+// RF20 — cuotas de financiacion propia
+export const listarCuotas = ({ estado, idCliente, desde, hasta, pagina = 1, tamano = 25 } = {}) =>
+  api.obtener(`/cuotas${consulta({ estado, idCliente, desde, hasta, pagina, tamano })}`)
+
+export const cobrarCuota = (idCuota, idMedioPago) =>
+  api.enviar(`/cuotas/${idCuota}/cobro`, { idMedioPago })

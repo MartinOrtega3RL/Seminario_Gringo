@@ -5,6 +5,7 @@ import { Boton } from '../../../ui/Boton.jsx'
 import { Aviso } from '../../../ui/Estados.jsx'
 import { Filete } from '../../../ui/Panel.jsx'
 import { aPesos } from '../ganchos/useVenta.js'
+import { MODALIDADES_PAGO } from '../ventas.reglas.js'
 
 // El mostrador. El total es el objeto mas grande de la pantalla porque lo tiene
 // que poder leer el cliente parado del otro lado, sin que se lo giren.
@@ -29,6 +30,10 @@ export const PanelVenta = ({
   error,
 }) => {
   const vacia = lineas.length === 0
+  const recargoCentavos = Math.round(Number(condiciones?.recargoFinanciacion ?? 0) * 100)
+  const totalConRecargoCentavos = totalCentavos + recargoCentavos
+  const modalidadInfo = MODALIDADES_PAGO[condiciones?.modalidadPago] ?? MODALIDADES_PAGO.CONTADO
+  const necesitaMedio = modalidadInfo.cobraAlVender
 
   return (
     <aside
@@ -96,16 +101,25 @@ export const PanelVenta = ({
           alCambiar={alCambiarCondiciones}
           deshabilitado={confirmando}
           errorDomicilio={errorDomicilio}
+          totalCentavos={totalCentavos}
+          tieneCliente={Boolean(cliente)}
         />
 
         {/* El total. Ambar sobre azul, el cuerpo mas grande de la pantalla. */}
         <div className="mt-4 flex items-end justify-between gap-3 border-t-2 border-dashed border-crema/25 pt-3">
-          <span className="pb-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-crema/70">
-            Total
-          </span>
+          <div>
+            <span className="block pb-1 text-xs font-semibold uppercase tracking-[0.18em] text-crema/70">
+              Total
+            </span>
+            {recargoCentavos > 0 && (
+              <span className="text-[11px] text-crema/60">
+                Subtotal ${aPesos(totalCentavos)} + Recargo ${aPesos(recargoCentavos)}
+              </span>
+            )}
+          </div>
           <span className="numeral font-[family-name:var(--font-cartel)] text-[40px] leading-[0.85] text-ambar">
             <span className="align-[0.3em] text-[0.42em] font-normal opacity-75">$</span>
-            {aPesos(totalCentavos)}
+            {aPesos(totalConRecargoCentavos)}
           </span>
         </div>
 
@@ -119,7 +133,7 @@ export const PanelVenta = ({
           tamano="cartel"
           className="mt-4"
           cargando={confirmando}
-          disabled={vacia || !condiciones.idMedioPago}
+          disabled={vacia || (necesitaMedio && !condiciones.idMedioPago)}
           onClick={alConfirmar}
         >
           {confirmando ? 'Registrando' : 'Confirmar venta'}

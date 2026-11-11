@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { buscarVenta, rutaComprobante } from '../ventas.api.js'
+import { condicionDePago } from '../ventas.reglas.js'
 import { abrirDocumento } from '../../../api/cliente.js'
 import { Boton } from '../../../ui/Boton.jsx'
 import { Filete, Precio } from '../../../ui/Panel.jsx'
@@ -62,7 +63,7 @@ export const Comprobante = () => {
         <Filete className="mt-3" />
         <p className="mt-2 text-xs font-semibold text-tinta/70">
           Lista {venta.listaPrecioAplicada.toLowerCase()} ·{' '}
-          {venta.pago?.medioPago?.nombre ?? 'Sin medio de pago'}
+          {condicionDePago({ ...venta, medioPago: venta.pago?.medioPago?.nombre })}
         </p>
       </div>
 

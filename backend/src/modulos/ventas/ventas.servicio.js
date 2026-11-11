@@ -1,14 +1,18 @@
 import { randomUUID } from 'node:crypto'
 import { Op } from 'sequelize'
 import { sequelize } from '../../config/base-de-datos.js'
-import { Venta, DetalleVenta, PagoVenta, Producto, Cliente, TipoCliente, Persona, MedioPago, Usuario } from '../../modelos/index.js'
+import { Venta, DetalleVenta, PagoVenta, Cuota, Producto, Cliente, TipoCliente, Persona, MedioPago, Usuario } from '../../modelos/index.js'
 import { descontarPorVenta, restituirPorAnulacion } from '../existencias/existencias.servicio.js'
 import { NoEncontrado, DatosInvalidos } from '../../errores.js'
 import { registroDe } from '../../registro.js'
+import { inicioDeDia, finDeDia, instanteUtc } from '../../http/fechas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 import {
-  resolverLista, precioSegunLista, calcularTotal, aPesos,
+  resolverLista, precioSegunLista, calcularTotal, aPesos, CUOTAS_MAXIMAS,
   cuotasCoherentes, entregaCoherente, formatearComprobante, admiteAnulacion,
+  MODALIDADES_PAGO, recargoFinanciacionValido, importeCobradoAlVender,
 } from './ventas.reglas.js'
+import { generarPlan } from './cuotas.reglas.js'
 
 const log = registroDe('ventas')
 
@@ -45,7 +49,18 @@ const armarLineas = async (items, lista, transaction) => Promise.all(
 
 const verificarCoherencia = (datos) => {
   if (!cuotasCoherentes(datos)) {
-    throw new DatosInvalidos('Una venta al contado no lleva cuotas, y una financiada necesita al menos una.')
+    throw new DatosInvalidos(`Una venta al contado no lleva cuotas, y una financiada necesita de 1 a ${CUOTAS_MAXIMAS} cuotas.`)
+  }
+  const recargo = recargoFinanciacionValido(datos)
+  if (!recargo.valido) {
+    throw new DatosInvalidos(recargo.motivo)
+  }
+  const modalidad = MODALIDADES_PAGO[datos.modalidadPago]
+  if (modalidad?.cobraAlVender && !datos.idMedioPago) {
+    throw new DatosInvalidos('Tenés que seleccionar un medio de pago.')
+  }
+  if (modalidad?.financia === 'COMERCIO' && !datos.idCliente) {
+    throw new DatosInvalidos('Para financiar en cuotas propias tenés que asociar un cliente registrado.')
   }
   if (!entregaCoherente(datos)) {
     throw new DatosInvalidos('El envio a domicilio necesita que informes la direccion de entrega.')
@@ -116,11 +131,38 @@ export const confirmarVenta = async (orden, idUsuario) => {
       }, { transaction })
     }
 
-    await registrarPago({
-      idVenta: venta.idVenta,
-      idMedioPago,
-      importe: aPesos(calcularTotal(lineas) + Math.round(Number(recargoFinanciacion) * 100)),
-      referencia: referenciaPago ?? null,
+    if (MODALIDADES_PAGO[modalidadPago]?.cobraAlVender) {
+      await registrarPago({
+        idVenta: venta.idVenta,
+        idMedioPago,
+        importe: importeCobradoAlVender({ modalidadPago, total, recargoFinanciacion }),
+        referencia: referenciaPago ?? null,
+      }, transaction)
+    }
+
+    if (MODALIDADES_PAGO[modalidadPago]?.financia === 'COMERCIO') {
+      const plan = generarPlan({
+        total,
+        cantidadCuotas,
+        fechaVenta: venta.fechaHora ?? new Date(),
+      })
+      await Cuota.bulkCreate(
+        plan.map((cuota) => ({ idVenta: venta.idVenta, ...cuota })),
+        { transaction },
+      )
+    }
+
+    await registrarEnBitacora({
+      entidad: 'venta',
+      idRegistro: venta.idVenta,
+      accion: 'ALTA',
+      despues: {
+        numeroComprobante: venta.numeroComprobante,
+        montoTotal: total,
+        modalidadPago,
+        estado: 'CONFIRMADA',
+      },
+      detalle: MODALIDADES_PAGO[modalidadPago]?.financia === 'COMERCIO' ? `Plan de ${cantidadCuotas} cuotas` : null,
     }, transaction)
 
     return { venta, lineas, cliente }
@@ -142,8 +184,8 @@ export const listarVentas = async ({ desde, hasta, idCliente, estado, limit, off
   if (estado) filtro.estado = estado
   if (desde || hasta) {
     filtro.fechaHora = {
-      ...(desde ? { [Op.gte]: `${desde} 00:00:00` } : {}),
-      ...(hasta ? { [Op.lte]: `${hasta} 23:59:59` } : {}),
+      ...(desde ? { [Op.gte]: inicioDeDia(desde) } : {}),
+      ...(hasta ? { [Op.lte]: finDeDia(hasta) } : {}),
     }
   }
 
@@ -174,10 +216,16 @@ export const listarVentas = async ({ desde, hasta, idCliente, estado, limit, off
            COALESCE(SUM(monto_total + recargo_financiacion), 0) AS total
       FROM venta
      WHERE estado = 'CONFIRMADA'
-       AND (:desde     IS NULL OR fecha_hora >= CONCAT(:desde, ' 00:00:00'))
-       AND (:hasta     IS NULL OR fecha_hora <= CONCAT(:hasta, ' 23:59:59'))
+       AND (:desde     IS NULL OR fecha_hora >= :desde)
+       AND (:hasta     IS NULL OR fecha_hora <= :hasta)
        AND (:idCliente IS NULL OR id_cliente = :idCliente)
-  `, { replacements: { desde: desde ?? null, hasta: hasta ?? null, idCliente: idCliente ?? null } })
+  `, {
+    replacements: {
+      desde: desde ? instanteUtc(inicioDeDia(desde)) : null,
+      hasta: hasta ? instanteUtc(finDeDia(hasta)) : null,
+      idCliente: idCliente ?? null,
+    },
+  })
 
   return { ...resultado, resumen }
 }
@@ -201,6 +249,19 @@ export const anularVenta = async (idVenta, motivo, idUsuario) => {
     const { admite, motivo: impedimento } = admiteAnulacion(venta)
     if (!admite) throw new DatosInvalidos(impedimento)
 
+    // Bloqueo las cuotas: un cobro simultaneo espera a que la anulacion termine,
+    // y la anulacion no puede borrar una cuota que se cobro mientras tanto.
+    const cuotas = await Cuota.findAll({ where: { idVenta }, lock: transaction.LOCK.UPDATE, transaction })
+    const cobradas = cuotas.filter((c) => Boolean(c.fechaCobro)).length
+    if (cobradas > 0) {
+      throw new DatosInvalidos(
+        `No se puede anular la venta: ya tiene ${cobradas} cuota${cobradas === 1 ? '' : 's'} cobrada${cobradas === 1 ? '' : 's'}.`,
+      )
+    }
+    if (cuotas.length > 0) {
+      await Cuota.destroy({ where: { idVenta }, transaction })
+    }
+
     for (const linea of venta.detalle) {
       await restituirPorAnulacion({
         idProducto: linea.idProducto,
@@ -216,6 +277,15 @@ export const anularVenta = async (idVenta, motivo, idUsuario) => {
       fechaAnulacion: new Date(),
       motivoAnulacion: motivo.trim(),
     }, { transaction })
+
+    await registrarEnBitacora({
+      entidad: 'venta',
+      idRegistro: venta.idVenta,
+      accion: 'ANULACION',
+      antes: { estado: 'CONFIRMADA' },
+      despues: { estado: 'ANULADA', motivoAnulacion: motivo.trim() },
+      detalle: motivo.trim(),
+    }, transaction)
   })
 
   log.info({ idVenta, usuario: idUsuario }, 'venta anulada')
@@ -236,6 +306,7 @@ export const buscarVenta = async (idVenta) => {
       { model: DetalleVenta, as: 'detalle', include: [{ model: Producto, as: 'producto', attributes: ['denominacion', 'codigoInterno'] }] },
       { model: PagoVenta, as: 'pago', include: [{ model: MedioPago, as: 'medioPago' }] },
       { model: Cliente, as: 'cliente', include: [{ model: Persona, as: 'persona' }] },
+      { model: Cuota, as: 'cuotas', separate: true, order: [['numeroCuota', 'ASC']] },
       // El comprobante consigna quien atendio (RF16.7 / RNF18).
       { model: Usuario, as: 'vendedor', attributes: ['idUsuario', 'nombreUsuario'] },
     ],

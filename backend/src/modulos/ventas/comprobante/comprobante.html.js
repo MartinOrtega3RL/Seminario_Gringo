@@ -1,4 +1,4 @@
-import { aPesos, aCentavos } from '../ventas.reglas.js'
+import { aPesos, aCentavos, MODALIDADES_PAGO, resumenCuotas, condicionDePago, textoCuotas } from '../ventas.reglas.js'
 
 // Implementacion vigente del contrato: comprobante interno no fiscal (S05),
 // en HTML listo para imprimir en HOJA A4, que es la impresora que tiene el
@@ -20,11 +20,50 @@ const fechaLegible = (fecha) => new Date(fecha).toLocaleString('es-AR', {
   day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
 })
 
-const MODALIDADES = {
-  CONTADO: 'Contado',
-  FINANCIACION_PROPIA: 'Financiacion del comercio',
-  TARJETA_CUOTAS: 'Tarjeta en cuotas',
-  GO_CUOTAS: 'Go Cuotas',
+const soloFechaLegible = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''))
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
+}
+
+const tablaPlanCuotas = (cuotas = []) => {
+  if (!cuotas?.length) return ''
+  const filas = cuotas.map((c) => `
+        <tr>
+          <td class="cod">Cuota ${escapar(c.numeroCuota)}</td>
+          <td>${escapar(soloFechaLegible(c.fechaVencimiento))}</td>
+          <td class="n">$${pesos(c.importe)}</td>
+          <td>${c.fechaCobro ? 'Cobrada' : 'Pendiente'}</td>
+        </tr>`).join('')
+
+  return `
+    <p style="margin:7mm 0 0; font-size:8pt; font-weight:700; text-transform:uppercase; letter-spacing:0.14em;">Plan de cuotas</p>
+    <table style="margin-top:2mm;">
+      <thead>
+        <tr>
+          <th>Cuota</th><th>Vencimiento</th><th class="n">Importe</th><th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>${filas}
+      </tbody>
+    </table>`
+}
+
+const seccionCuotasComprobante = (venta) => {
+  const modalidad = MODALIDADES_PAGO[venta.modalidadPago]
+  if (modalidad?.financia === 'COMERCIO') return tablaPlanCuotas(venta.cuotas)
+  if (modalidad?.financia === 'TERCERO' && venta.cantidadCuotas) {
+    const aprox = resumenCuotas({
+      modalidadPago: venta.modalidadPago,
+      total: venta.montoTotal,
+      recargoFinanciacion: venta.recargoFinanciacion,
+      cantidadCuotas: venta.cantidadCuotas,
+    })
+    return `
+    <p style="margin:5mm 0 0; font-size:9.5pt; color:#40444b;">
+      ${escapar(textoCuotas(venta.cantidadCuotas))} de aprox. $${pesos(aprox)} (las liquida el emisor)
+    </p>`
+  }
+  return ''
 }
 
 const filaDetalle = (linea) => `
@@ -102,7 +141,6 @@ const plantilla = (venta) => {
   const recargoCentavos = aCentavos(venta.recargoFinanciacion)
   const cliente = venta.cliente?.persona?.apellidoNombre ?? 'Consumidor final'
   const documento = venta.cliente?.persona?.numeroDocumento
-  const cuotas = venta.cantidadCuotas ? ` en ${venta.cantidadCuotas} cuotas` : ''
 
   return `<!doctype html>
 <html lang="es-AR">
@@ -152,10 +190,11 @@ const plantilla = (venta) => {
       </tbody>
     </table>
 
+    ${seccionCuotasComprobante(venta)}
+
     <div class="pie">
       <span>
-        ${escapar(MODALIDADES[venta.modalidadPago] ?? venta.modalidadPago)}${escapar(cuotas)}
-        · ${escapar(venta.pago?.medioPago?.nombre ?? '-')}
+        ${escapar(condicionDePago({ ...venta, medioPago: venta.pago?.medioPago?.nombre }))}
         <br>
         ${venta.modalidadEntrega === 'ENVIO_DOMICILIO'
           ? `Envio a ${escapar(venta.domicilioEntrega)}`

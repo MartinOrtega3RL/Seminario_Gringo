@@ -12,15 +12,10 @@ import { Cargando, Vacio, Fallo, Aviso } from '../../../ui/Estados.jsx'
 import { IconoImprimir, IconoQuitar, IconoVenta } from '../../../ui/Iconos.jsx'
 import { useSesion } from '../../../app/sesion.jsx'
 
+import { condicionDePago } from '../ventas.reglas.js'
+
 // RF18.1 — historial con filtros por período y por cliente.
 // RF18.2 — anulación.
-
-const MODALIDADES = {
-  CONTADO: 'Contado',
-  FINANCIACION_PROPIA: 'Financiación del comercio',
-  TARJETA_CUOTAS: 'Tarjeta en cuotas',
-  GO_CUOTAS: 'Go Cuotas',
-}
 
 const FILTRO = 'h-10 rounded-[3px] border-2 border-tinta bg-crema px-2.5 text-sm font-semibold text-tinta'
 
@@ -202,9 +197,7 @@ export const HistorialVentas = () => {
                         hour: '2-digit', minute: '2-digit',
                       }),
                       venta.vendedor?.nombreUsuario,
-                      MODALIDADES[venta.modalidadPago] +
-                        (venta.cantidadCuotas ? ` en ${venta.cantidadCuotas}` : ''),
-                      venta.pago?.medioPago?.nombre,
+                      condicionDePago({ ...venta, medioPago: venta.pago?.medioPago?.nombre }),
                       anulada && venta.motivoAnulacion,
                     ]
                       .filter(Boolean)

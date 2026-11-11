@@ -72,3 +72,15 @@ export const PagoVenta = sequelize.define('PagoVenta', {
   importe: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
   referencia: { type: DataTypes.STRING(60), allowNull: true },
 }, { tableName: 'pago_venta' })
+
+// RF20 — cuotas de las ventas financiadas por el propio comercio (S10).
+export const Cuota = sequelize.define('Cuota', {
+  idCuota: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, field: 'id_cuota' },
+  idVenta: { type: DataTypes.INTEGER, allowNull: false, field: 'id_venta' },
+  numeroCuota: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, field: 'numero_cuota' },
+  fechaVencimiento: { type: DataTypes.DATEONLY, allowNull: false, field: 'fecha_vencimiento' },
+  importe: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+  fechaCobro: { type: DataTypes.DATE, allowNull: true, field: 'fecha_cobro' },
+  idMedioPago: { type: DataTypes.INTEGER, allowNull: true, field: 'id_medio_pago' },
+  idUsuarioCobro: { type: DataTypes.INTEGER, allowNull: true, field: 'id_usuario_cobro' },
+}, { tableName: 'cuota', timestamps: false, freezeTableName: true })
