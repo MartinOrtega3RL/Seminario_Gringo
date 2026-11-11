@@ -10,6 +10,7 @@ import {
   normalizarContacto, documentoCompleto,
   formatearCompraHistorial, formatearReparacionHistorial,
 } from './clientes.reglas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const RELACIONES = [
   {
@@ -95,6 +96,18 @@ export const registrarCliente = async (datos) => {
       observaciones: datos.observaciones ?? null,
     }, { transaction })
 
+    await registrarEnBitacora({
+      entidad: 'cliente',
+      idRegistro: cliente.idCliente,
+      accion: 'ALTA',
+      despues: {
+        apellidoNombre: datos.apellidoNombre,
+        idTipoCliente: datos.idTipoCliente,
+        numeroDocumento: datos.numeroDocumento ?? null,
+        telefonoWhatsapp: normalizarContacto(datos.telefonoWhatsapp),
+      },
+    }, transaction)
+
     return cliente.idCliente
   })
 
@@ -106,13 +119,25 @@ export const modificarCliente = async (idCliente, datos) => {
   const cliente = await buscarCliente(idCliente)
   await verificarDocumento(datos, cliente.idPersona)
 
+  const antes = {
+    apellidoNombre: cliente.persona.apellidoNombre,
+    tipoDocumento: cliente.persona.tipoDocumento,
+    numeroDocumento: cliente.persona.numeroDocumento,
+    telefonoWhatsapp: cliente.persona.telefonoWhatsapp,
+    correo: cliente.persona.correo,
+    domicilio: cliente.persona.domicilio,
+    idTipoCliente: cliente.idTipoCliente,
+    observaciones: cliente.observaciones,
+  }
+  const whatsapp = normalizarContacto(datos.telefonoWhatsapp)
+
   await sequelize.transaction(async (transaction) => {
     await cliente.persona.update({
       apellidoNombre: datos.apellidoNombre,
       tipoPersona: datos.tipoPersona ?? cliente.persona.tipoPersona,
       tipoDocumento: datos.tipoDocumento ?? null,
       numeroDocumento: datos.numeroDocumento ?? null,
-      telefonoWhatsapp: normalizarContacto(datos.telefonoWhatsapp),
+      telefonoWhatsapp: whatsapp,
       correo: datos.correo ?? null,
       domicilio: datos.domicilio ?? null,
     }, { transaction })
@@ -121,6 +146,23 @@ export const modificarCliente = async (idCliente, datos) => {
       idTipoCliente: datos.idTipoCliente,
       observaciones: datos.observaciones ?? null,
     }, { transaction })
+
+    await registrarEnBitacora({
+      entidad: 'cliente',
+      idRegistro: idCliente,
+      accion: 'MODIFICACION',
+      antes,
+      despues: {
+        apellidoNombre: datos.apellidoNombre,
+        tipoDocumento: datos.tipoDocumento ?? null,
+        numeroDocumento: datos.numeroDocumento ?? null,
+        telefonoWhatsapp: whatsapp,
+        correo: datos.correo ?? null,
+        domicilio: datos.domicilio ?? null,
+        idTipoCliente: datos.idTipoCliente,
+        observaciones: datos.observaciones ?? null,
+      },
+    }, transaction)
   })
 
   return buscarCliente(idCliente)
@@ -133,6 +175,13 @@ export const modificarCliente = async (idCliente, datos) => {
 export const darDeBajaCliente = async (idCliente) => {
   const cliente = await buscarCliente(idCliente)
   await cliente.update({ activo: false })
+  await registrarEnBitacora({
+    entidad: 'cliente',
+    idRegistro: idCliente,
+    accion: 'BAJA',
+    antes: { activo: true, apellidoNombre: cliente.persona.apellidoNombre },
+    despues: { activo: false },
+  })
 }
 
 /** RF14.1 — historial paginado de compras del cliente. */

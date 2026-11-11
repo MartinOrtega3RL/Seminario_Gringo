@@ -54,6 +54,7 @@ export const formatearCompraHistorial = (venta) => {
     modalidadPago: venta.modalidadPago,
     cantidadCuotas: venta.cantidadCuotas ?? null,
     listaPrecioAplicada: venta.listaPrecioAplicada,
+    // La financiacion propia no tiene pago al vender: cada cuota registra su medio.
     medioPago: venta.pago?.medioPago?.nombre ?? null,
     resumenProductos: resumirProductosVenta(venta.detalle),
   }

@@ -15,6 +15,7 @@ import { Aviso } from '../../../ui/Estados.jsx'
 export const DialogoPedido = ({
   abierto,
   productoInicial = null,
+  descripcionInicial = '',
   clienteInicial = null,
   alCerrar,
   alGuardar,
@@ -32,13 +33,13 @@ export const DialogoPedido = ({
     if (!abierto) return
     setCliente(clienteInicial ?? null)
     setProducto(productoInicial ?? null)
-    setDescripcion('')
+    setDescripcion(descripcionInicial || '')
     setCantidad('1')
     setObservacion('')
     setErrores({})
     setError(null)
     setGuardando(false)
-  }, [abierto, productoInicial, clienteInicial])
+  }, [abierto, productoInicial, descripcionInicial, clienteInicial])
 
   const validar = () => {
     const fallos = {}

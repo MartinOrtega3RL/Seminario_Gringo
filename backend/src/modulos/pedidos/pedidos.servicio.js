@@ -9,6 +9,7 @@ import {
   identificacionValida,
   formatearPedido,
 } from './pedidos.reglas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const log = registroDe('pedidos')
 
@@ -55,19 +56,36 @@ export const registrarPedido = async (datos, idUsuario) => {
     if (!producto) throw new NoEncontrado('El producto')
   }
 
-  const pedido = await PedidoPendiente.create({
-    idCliente,
-    idProducto: idProducto ?? null,
-    descripcionPedido: descripcionPedido?.trim() || null,
-    idUsuario,
-    cantidad,
-    fechaSolicitud: new Date(),
-    estado: 'PENDIENTE',
-    observacion: observacion?.trim() || null,
+  const idPedido = await sequelize.transaction(async (transaction) => {
+    const pedido = await PedidoPendiente.create({
+      idCliente,
+      idProducto: idProducto ?? null,
+      descripcionPedido: descripcionPedido?.trim() || null,
+      idUsuario,
+      cantidad,
+      fechaSolicitud: new Date(),
+      estado: 'PENDIENTE',
+      observacion: observacion?.trim() || null,
+    }, { transaction })
+
+    await registrarEnBitacora({
+      entidad: 'pedido_pendiente',
+      idRegistro: pedido.idPedido,
+      accion: 'ALTA',
+      despues: {
+        idCliente,
+        idProducto: idProducto ?? null,
+        descripcionPedido: descripcionPedido?.trim() || null,
+        cantidad,
+        estado: 'PENDIENTE',
+      },
+    }, transaction)
+
+    return pedido.idPedido
   })
 
-  log.info({ idPedido: pedido.idPedido, idCliente, idProducto: idProducto ?? null, usuario: idUsuario }, 'pedido registrado')
-  return buscarPedido(pedido.idPedido)
+  log.info({ idPedido, idCliente, idProducto: idProducto ?? null, usuario: idUsuario }, 'pedido registrado')
+  return buscarPedido(idPedido)
 }
 
 /**
@@ -84,6 +102,7 @@ export const actualizarEstadoPedido = async (idPedido, { estado, observacion }, 
     const evaluacion = evaluarCambioEstadoPedido(pedido.estado, estado)
     if (!evaluacion.admite) throw new DatosInvalidos(evaluacion.motivo)
 
+    const estadoAnterior = pedido.estado
     const cambios = {
       estado,
       ...(evaluacion.fechaResolucion ? { fechaResolucion: evaluacion.fechaResolucion } : {}),
@@ -93,6 +112,15 @@ export const actualizarEstadoPedido = async (idPedido, { estado, observacion }, 
     }
 
     await pedido.update(cambios, { transaction })
+
+    await registrarEnBitacora({
+      entidad: 'pedido_pendiente',
+      idRegistro: idPedido,
+      accion: 'MODIFICACION',
+      antes: { estado: estadoAnterior },
+      despues: { estado },
+      detalle: `${estadoAnterior} -> ${estado}`,
+    }, transaction)
   })
 
   log.info({ idPedido, estado, usuario: idUsuario }, 'estado de pedido actualizado')

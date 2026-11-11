@@ -1,12 +1,5 @@
 // Reglas de presentacion de la ficha del cliente.
 
-export const MODALIDADES = {
-  CONTADO: 'Contado',
-  FINANCIACION_PROPIA: 'Financiación del comercio',
-  TARJETA_CUOTAS: 'Tarjeta en cuotas',
-  GO_CUOTAS: 'Go Cuotas',
-}
-
 /**
  * RF14 / RF04.1 — cada pestaña se muestra solo si el perfil tiene lectura
  * en ese modulo: el Vendedor no ve reparaciones y el Tecnico no ve compras.
