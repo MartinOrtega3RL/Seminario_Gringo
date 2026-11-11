@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { listarProductos } from '../../catalogo/catalogo.api.js'
 import { IconoBuscar } from '../../../ui/Iconos.jsx'
 
@@ -9,6 +9,7 @@ import { IconoBuscar } from '../../../ui/Iconos.jsx'
 // que se abre, tomar el foco mueve la pantalla y deja el borde marcado sin que
 // nadie lo haya tocado.
 export const ElegirProducto = ({ etiqueta = 'Producto', alElegir, elegido, deshabilitado, enfocar = true }) => {
+  const idCampo = useId()
   const [texto, setTexto] = useState('')
   const [resultados, setResultados] = useState([])
   const [buscando, setBuscando] = useState(false)
@@ -71,14 +72,14 @@ export const ElegirProducto = ({ etiqueta = 'Producto', alElegir, elegido, desha
 
   return (
     <div>
-      <label htmlFor="elegir-producto" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-crema/75">
+      <label htmlFor={idCampo} className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-crema/75">
         {etiqueta}
       </label>
 
       <div className="relative">
         <IconoBuscar className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-tinta/45" />
         <input
-          id="elegir-producto"
+          id={idCampo}
           type="search"
           autoFocus={enfocar}
           value={texto}

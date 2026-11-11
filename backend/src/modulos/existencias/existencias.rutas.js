@@ -4,7 +4,7 @@ import { autenticar } from '../../http/middlewares/autenticar.js'
 import { autorizar } from '../../http/middlewares/autorizar.js'
 import { leerPaginacion, responderPaginado } from '../../http/paginacion.js'
 import {
-  listarMovimientos, registrarIngreso, registrarAjuste, registrarConsumoReparacion,
+  listarMovimientos, registrarAjuste, registrarConsumoReparacion,
 } from './existencias.servicio.js'
 
 // En ninguna de estas rutas viaja el id del usuario: el responsable de todo
@@ -18,14 +18,6 @@ const esquemaFiltros = z.object({
   tipo: z.enum(['INGRESO', 'VENTA', 'REPARACION', 'AJUSTE', 'DEVOLUCION']).optional(),
   desde: fecha.optional(),
   hasta: fecha.optional(),
-})
-
-const esquemaIngreso = z.object({
-  lineas: z.array(z.object({
-    idProducto: z.coerce.number().int().positive(),
-    cantidad: z.coerce.number().int().min(1).max(999_999),
-  })).min(1, 'El ingreso necesita al menos un producto.').max(100),
-  observaciones: z.string().trim().max(200).nullish().transform((v) => v || null),
 })
 
 const esquemaAjuste = z.object({
@@ -61,12 +53,6 @@ rutasExistencias.get('/movimientos', leer, async (peticion, respuesta) => {
 
   return respuesta.json(responderPaginado(resultado, paginacion))
 })
-
-// RF11.1
-rutasExistencias.post('/ingreso', escribir, async (peticion, respuesta) =>
-  respuesta.status(201).json({
-    datos: await registrarIngreso(esquemaIngreso.parse(peticion.body), peticion.usuario.idUsuario),
-  }))
 
 // RF11.5
 rutasExistencias.post('/ajuste', escribir, async (peticion, respuesta) =>

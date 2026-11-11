@@ -3,6 +3,8 @@ import { sequelize } from '../../config/base-de-datos.js'
 import { Producto, MovimientoStock, Usuario } from '../../modelos/index.js'
 import { StockInsuficiente, NoEncontrado, DatosInvalidos } from '../../errores.js'
 import { registroDe } from '../../registro.js'
+import { inicioDeDia, finDeDia } from '../../http/fechas.js'
+import { registrarEnBitacora } from '../bitacora/bitacora.servicio.js'
 
 const log = registroDe('existencias')
 
@@ -77,7 +79,7 @@ const aplicarMovimiento = async (orden, transaction) => {
   // Dentro de la transaccion, la lectura ve nuestra propia escritura.
   const producto = await leerProducto(idProducto, transaction)
 
-  await MovimientoStock.create({
+  const movimiento = await MovimientoStock.create({
     idProducto,
     idUsuario,
     tipoMovimiento: tipo,
@@ -89,16 +91,19 @@ const aplicarMovimiento = async (orden, transaction) => {
     idOrden,
   }, { transaction })
 
-  return producto.stockActual
+  return { saldo: producto.stockActual, idMovimiento: movimiento.idMovimiento }
 }
+
+const ejecutarMovimiento = async (datos, transaction) =>
+  (await aplicarMovimiento(datos, transaction)).saldo
 
 /** RF11.2 — descuento por venta. Lo invoca el modulo de ventas, en su transaccion. */
 export const descontarPorVenta = ({ idProducto, cantidad, idUsuario, idVenta }, transaction) =>
-  aplicarMovimiento({ idProducto, delta: -cantidad, tipo: 'VENTA', idUsuario, idVenta }, transaction)
+  ejecutarMovimiento({ idProducto, delta: -cantidad, tipo: 'VENTA', idUsuario, idVenta }, transaction)
 
 /** RF11.4 — restitucion por anulacion de venta. Sumar nunca deja el saldo negativo. */
 export const restituirPorAnulacion = ({ idProducto, cantidad, idUsuario, idVenta }, transaction) =>
-  aplicarMovimiento({ idProducto, delta: cantidad, tipo: 'DEVOLUCION', idUsuario, idVenta }, transaction)
+  ejecutarMovimiento({ idProducto, delta: cantidad, tipo: 'DEVOLUCION', idUsuario, idVenta }, transaction)
 
 /**
  * RF22.4 / RF11.3 — repuesto usado en una orden de servicio. Lo invoca el modulo
@@ -106,32 +111,43 @@ export const restituirPorAnulacion = ({ idProducto, cantidad, idUsuario, idVenta
  * renglon de repuesto_utilizado se escriben juntos o no se escribe ninguno.
  */
 export const descontarPorReparacion = ({ idProducto, cantidad, idUsuario, idOrden, motivo }, transaction) =>
-  aplicarMovimiento({ idProducto, delta: -cantidad, tipo: 'REPARACION', idUsuario, motivo, idOrden }, transaction)
+  ejecutarMovimiento({ idProducto, delta: -cantidad, tipo: 'REPARACION', idUsuario, motivo, idOrden }, transaction)
 
 /** Quitar un repuesto de una orden devuelve la unidad al stock y deja el movimiento. */
 export const restituirPorReparacion = ({ idProducto, cantidad, idUsuario, idOrden, motivo }, transaction) =>
-  aplicarMovimiento({ idProducto, delta: cantidad, tipo: 'DEVOLUCION', idUsuario, motivo, idOrden }, transaction)
+  ejecutarMovimiento({ idProducto, delta: cantidad, tipo: 'DEVOLUCION', idUsuario, motivo, idOrden }, transaction)
 
 /**
- * RF11.1 — ingreso de mercaderia, varias lineas en una sola operacion.
- * La mercaderia llega en remitos de varios articulos y cargarlos de a uno
- * multiplicaria el trabajo (H25).
+ * RF11.1 / RF10.3 — ingreso de mercaderia, varias lineas en una sola operacion.
+ * Se invoca internamente al confirmar una recepcion de mercaderia (o en su
+ * propia transaccion si se llama sin una abierta).
  */
-export const registrarIngreso = async ({ lineas, observaciones }, idUsuario) => {
+export const registrarIngreso = async ({ lineas, observaciones, idRecepcion = null }, idUsuario, transactionExterna = null) => {
   if (!lineas?.length) throw new DatosInvalidos('El ingreso necesita al menos un producto.')
 
-  const resultado = await sequelize.transaction(async (transaction) => {
+  const ejecutar = async (transaction) => {
     const saldos = []
     for (const { idProducto, cantidad } of lineas) {
-      const saldo = await aplicarMovimiento({
-        idProducto, delta: cantidad, tipo: 'INGRESO', idUsuario, motivo: observaciones,
+      const { saldo, idMovimiento } = await aplicarMovimiento({
+        idProducto, delta: cantidad, tipo: 'INGRESO', idUsuario, motivo: observaciones, idRecepcion,
       }, transaction)
-      saldos.push({ idProducto, cantidad, saldo })
+      await registrarEnBitacora({
+        entidad: 'movimiento_stock',
+        idRegistro: idMovimiento,
+        accion: 'ALTA',
+        despues: { idProducto, cantidad, stockResultante: saldo, tipoMovimiento: 'INGRESO', idRecepcion },
+        detalle: observaciones ?? null,
+      }, transaction)
+      saldos.push({ idProducto, cantidad, saldo, idMovimiento })
     }
     return saldos
-  })
+  }
 
-  log.info({ usuario: idUsuario, lineas: resultado.length }, 'ingreso de mercaderia registrado')
+  const resultado = transactionExterna
+    ? await ejecutar(transactionExterna)
+    : await sequelize.transaction(ejecutar)
+
+  log.info({ usuario: idUsuario, idRecepcion, lineas: resultado.length }, 'ingreso de mercaderia registrado')
   return resultado
 }
 
@@ -142,10 +158,19 @@ export const registrarIngreso = async ({ lineas, observaciones }, idUsuario) => 
 export const registrarAjuste = async ({ idProducto, cantidad, motivo }, idUsuario) => {
   if (!motivo?.trim()) throw new DatosInvalidos('El ajuste necesita un motivo.')
 
-  const saldo = await sequelize.transaction((transaction) =>
-    aplicarMovimiento({
+  const saldo = await sequelize.transaction(async (transaction) => {
+    const { saldo: nuevoSaldo, idMovimiento } = await aplicarMovimiento({
       idProducto, delta: cantidad, tipo: 'AJUSTE', idUsuario, motivo: motivo.trim(),
-    }, transaction))
+    }, transaction)
+    await registrarEnBitacora({
+      entidad: 'movimiento_stock',
+      idRegistro: idMovimiento,
+      accion: 'AJUSTE',
+      despues: { idProducto, cantidad, stockResultante: nuevoSaldo, tipoMovimiento: 'AJUSTE' },
+      detalle: motivo.trim(),
+    }, transaction)
+    return nuevoSaldo
+  })
 
   log.info({ idProducto, cantidad, saldo, usuario: idUsuario }, 'ajuste manual registrado')
   return { idProducto, saldo }
@@ -171,10 +196,19 @@ export const registrarConsumoReparacion = async ({ idProducto, cantidad, motivo,
     throw new DatosInvalidos('Indicá para qué reparación se usó el repuesto.')
   }
 
-  const saldo = await sequelize.transaction((transaction) =>
-    aplicarMovimiento({
+  const saldo = await sequelize.transaction(async (transaction) => {
+    const { saldo: nuevoSaldo, idMovimiento } = await aplicarMovimiento({
       idProducto, delta: -cantidad, tipo: 'REPARACION', idUsuario, motivo: motivo.trim(), idOrden,
-    }, transaction))
+    }, transaction)
+    await registrarEnBitacora({
+      entidad: 'movimiento_stock',
+      idRegistro: idMovimiento,
+      accion: 'AJUSTE',
+      despues: { idProducto, cantidad: -cantidad, stockResultante: nuevoSaldo, tipoMovimiento: 'REPARACION', idOrden },
+      detalle: motivo.trim(),
+    }, transaction)
+    return nuevoSaldo
+  })
 
   log.info({ idProducto, cantidad, saldo, usuario: idUsuario }, 'consumo por reparacion registrado')
   return { idProducto, saldo }
@@ -187,8 +221,8 @@ export const listarMovimientos = async ({ idProducto, tipo, desde, hasta, limit,
   if (tipo) filtro.tipoMovimiento = tipo
   if (desde || hasta) {
     filtro.fechaHora = {
-      ...(desde ? { [Op.gte]: `${desde} 00:00:00` } : {}),
-      ...(hasta ? { [Op.lte]: `${hasta} 23:59:59` } : {}),
+      ...(desde ? { [Op.gte]: inicioDeDia(desde) } : {}),
+      ...(hasta ? { [Op.lte]: finDeDia(hasta) } : {}),
     }
   }
 

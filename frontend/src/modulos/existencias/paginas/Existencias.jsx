@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useListadoPaginado } from '../../../ganchos/useListadoPaginado.js'
-import { listarMovimientos, registrarIngreso, registrarAjuste, registrarConsumoReparacion } from '../existencias.api.js'
-import { DialogoIngreso } from '../componentes/DialogoIngreso.jsx'
+import { listarMovimientos, registrarAjuste, registrarConsumoReparacion } from '../existencias.api.js'
 import { DialogoAjuste } from '../componentes/DialogoAjuste.jsx'
 import { DialogoReparacion } from '../componentes/DialogoReparacion.jsx'
 import { Paginacion } from '../../catalogo/componentes/Paginacion.jsx'
@@ -38,6 +38,7 @@ const fecha = (valor) =>
   })
 
 export const Existencias = () => {
+  const navegar = useNavigate()
   const { puedeEscribir } = useSesion()
   const escritura = puedeEscribir('CATALOGO_STOCK')
 
@@ -47,15 +48,8 @@ export const Existencias = () => {
     filtros: { tipo: tipo || undefined },
   })
 
-  const [ingresoAbierto, setIngresoAbierto] = useState(false)
   const [ajusteAbierto, setAjusteAbierto] = useState(false)
   const [reparacionAbierta, setReparacionAbierta] = useState(false)
-
-  const guardarIngreso = async (datos) => {
-    await registrarIngreso(datos)
-    setIngresoAbierto(false)
-    listado.recargar()
-  }
 
   const guardarAjuste = async (datos) => {
     await registrarAjuste(datos)
@@ -84,7 +78,7 @@ export const Existencias = () => {
             <IconoBalanza />
             Ajuste
           </Boton>
-          <Boton onClick={() => setIngresoAbierto(true)}>
+          <Boton onClick={() => navegar('/productos/recepciones?nueva=1')}>
             <IconoEntrar />
             Registrar ingreso
           </Boton>
@@ -175,12 +169,6 @@ export const Existencias = () => {
           <Paginacion paginacion={paginacion} alCambiar={listado.setPagina} />
         </>
       )}
-
-      <DialogoIngreso
-        abierto={ingresoAbierto}
-        alCerrar={() => setIngresoAbierto(false)}
-        alRegistrar={guardarIngreso}
-      />
 
       <DialogoAjuste
         abierto={ajusteAbierto}
